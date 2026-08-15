@@ -1,0 +1,46 @@
+/**
+ * dsh-task-capsule browser half: registers the session-header capsule — a
+ * compact, always-visible task status indicator (phase 2: status → task →
+ * time, nothing management-shaped). The settings section and recent-task
+ * surfaces were cut in phase 2; configuration rides the patch config.
+ *
+ * Data flows through the framework session kit (`useProjection` for the
+ * host-computed capsule facts, `useSession` for the live status) plus the
+ * tiny same-origin `/api/task-capsule/settings` resource for display flags.
+ * @module dsh-task-capsule/client
+ */
+
+import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+// Type-only: pulls the conversation header-utilities SlotMap merge and the
+// `ctx.locale` service merge into scope.
+import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-locale/client'
+import { CapsuleChip } from './CapsuleChip.tsx'
+import { en, NS, zh } from './locales.ts'
+
+/** Required services for locale registration and the header slot entry. */
+export const inject = ['sessions', 'slots', 'locale']
+
+/**
+ * Browser plugin body: mount the session-header capsule.
+ * @param ctx - client root context.
+ */
+export function apply(ctx: ClientContext): void {
+  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'task-capsule: dictionaries')
+
+  // The capsule: a compact status pill in the session header's utility
+  // strip, expanding into the task panel.
+  ctx.slots.inject('conversation.session.header.utilities', () =>
+    ctx.slots.register({
+      name: 'conversation.session.header.utilities',
+      id: 'task-capsule',
+      order: 10,
+      locale: NS,
+    }, CapsuleChip))
+}
+
+export type { CapsuleChipProps } from './CapsuleChip.tsx'
+export type { CapsulePanelProps } from './CapsulePanel.tsx'
+export type { TaskCapsuleApi } from './api.ts'
+export { deriveStatus } from './status.ts'
+export { formatDuration, describeCall } from './format.ts'

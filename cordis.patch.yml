@@ -1,0 +1,16 @@
+# dsh-task-capsule bundle patch: the plugin's own loader rows.
+#
+# Applied by the profile loader after the profile's existing bundle layers
+# (dsh-base, dsh-web-app). The host half is one ordinary host row; the
+# `dsh.client` manifest on this package makes the browser half part of the
+# web roster the client-modules node half scans into window.__DSH_BOOT__.
+- insert:
+    - id: task-capsule
+      name: dsh-task-capsule
+      config:
+        # 设计文档 §13：默认保留完成态 8 秒，失败不自动展开，历史 5 条。
+        keepAfterDoneMs: 8000
+        autoExpandFailed: false
+        historyLimit: 5
+        showDuration: true
+        showCurrentOp: true

@@ -1,0 +1,405 @@
+/* Task capsule browser styles — phase 2 visual system.
+   The capsule is a status indicator: a compact pill (status → task →
+   time), a morphing expanded panel, breathing dots instead of spinners,
+   and a strict Current > Completed > Pending hierarchy. Aligned to the
+   Harness dsw design tokens (dark rungs, business/success/warn/error). */
+
+.root {
+  position: relative;
+}
+
+/* ---- compact capsule (header utilities) ---- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  min-height: 32px;
+  max-width: 300px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.chip:hover,
+.chip:focus-visible {
+  border-color: var(--dsw-alias-border-l1);
+  background: var(--dsw-specific-tip);
+}
+
+.chipText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A settled (terminal) capsule reads as a quiet record, not a live control. */
+.chipDone {
+  border-color: var(--dsw-alias-border-l1);
+  background: var(--dsw-specific-tip);
+}
+
+/* ---- status glyphs (phase 2 §3: breathe, never spin) ---- */
+
+.glyph {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+}
+
+.glyphDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.glyphRing {
+  box-sizing: border-box;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.pauseBar {
+  width: 2.5px;
+  height: 9px;
+  margin: 0 1px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.glyphRunning {
+  color: var(--dsw-alias-state-business-primary);
+}
+
+.glyphWaiting {
+  color: var(--dsw-alias-state-warn-primary);
+}
+
+.glyphPaused {
+  color: var(--dsw-alias-state-warn-primary);
+}
+
+.glyphSuccess {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.glyphFailed {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.glyphPending {
+  color: var(--dsw-alias-label-caption);
+}
+
+/* The working dot breathes — a gentle opacity pulse, not a loader. */
+.glyphRunning .glyphDot,
+.glyphWaiting .glyphDot {
+  animation: dsh-capsule-breathe 1.8s ease-in-out infinite;
+}
+
+@keyframes dsh-capsule-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* ---- popover: the capsule morphs into the panel (phase 2 §7) ---- */
+
+.popover {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  z-index: 100;
+  box-sizing: border-box;
+  width: 300px;
+  max-width: min(360px, calc(100vw - 32px));
+  max-height: min(440px, calc(100vh - 140px));
+  padding: 10px;
+  overflow: auto;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-specific-menu);
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+  box-shadow: var(--dsw-shadow-lv3);
+  transform-origin: top right;
+  animation: dsh-capsule-grow 180ms ease-out;
+}
+
+@keyframes dsh-capsule-grow {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ---- panel ---- */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.panelTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dsw-alias-label-caption);
+}
+
+.panelClose {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+}
+
+.panelClose:hover,
+.panelClose:focus-visible {
+  background: var(--dsw-alias-fill-l1);
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* status line: glyph + word (+ waiting reason, truncated) */
+.statusLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.statusText {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.statusReason {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* current task: the one emphasized row (phase 2 §2) */
+.currentTask {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.currentTaskName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--dsw-alias-label-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.currentTaskDuration {
+  flex: none;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- task tree: Current > Completed > Pending ---- */
+
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.treeItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.treeItem[data-status='completed'] {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.treeItem[data-status='pending'] {
+  color: var(--dsw-alias-label-caption);
+}
+
+.treeItem[data-status='in_progress'] {
+  background: var(--dsw-alias-fill-l1);
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+}
+
+.itemGlyph {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+}
+
+.itemGlyphDone {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.itemGlyphActive {
+  color: var(--dsw-alias-state-business-primary);
+}
+
+.itemGlyphActive .glyphDot {
+  animation: dsh-capsule-breathe 1.8s ease-in-out infinite;
+}
+
+.itemGlyphPending {
+  color: var(--dsw-alias-label-caption);
+}
+
+.treeContent {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.treeDuration {
+  flex: none;
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* current operation row hanging under the running item */
+.currentOp {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 0 0 22px;
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.currentOpLabel {
+  flex: none;
+  color: var(--dsw-alias-state-business-primary);
+}
+
+.currentOpText {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--dsw-font-mono);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ---- failure entry (phase 2 §12: one line + view details, no log viewer) ---- */
+
+.errorBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-specific-tip);
+}
+
+.errorLine {
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-state-error-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.errorToggle {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.errorToggle:hover,
+.errorToggle:focus-visible {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.errorDetail {
+  box-sizing: border-box;
+  margin-top: 4px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--dsw-alias-fill-l1);
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--dsw-font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
