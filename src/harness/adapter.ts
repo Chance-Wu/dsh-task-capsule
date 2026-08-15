@@ -22,7 +22,7 @@ import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type { CapsuleFiles, CapsuleState } from '../types/capsule.ts'
 import { addDiffs, diffsFromMeta, goalPhaseOf, isDirectPrompt } from './event-parser.ts'
-import { mergeTodos, type TaskTiming } from './task-mapper.ts'
+import { advanceOnTurnEnd, mergeTodos, type TaskTiming } from './task-mapper.ts'
 
 /** Internal fold state: the wire capsule plus the todo timing map. */
 export interface CapsuleFoldState {
@@ -63,16 +63,34 @@ export function applyFold(state: CapsuleFoldState, event: SessionEvent): Capsule
       const startedAt = capsule.startedAt ?? event.time
       return { ...state, capsule: { ...capsule, startedAt, lastActivityAt: event.time } }
     }
-    case 'turn/end':
-      return { ...state, capsule: { ...capsule, lastTurnEndReason: event.data.reason.kind, lastActivityAt: event.time } }
+    case 'turn/end': {
+      const reason = event.data.reason.kind
+      // A successfully completed turn advances the in-progress item to done
+      // (the agent moved on without necessarily rewriting the plan).
+      const advanced = reason === 'completed' ? advanceOnTurnEnd(state.timing, capsule.todos, reason, event.time) : undefined
+      return {
+        ...state,
+        timing: advanced !== undefined ? new Map(advanced.timing) : state.timing,
+        capsule: {
+          ...capsule,
+          todos: advanced !== undefined ? [...advanced.items] : capsule.todos,
+          lastTurnEndReason: reason,
+          lastActivityAt: event.time,
+        },
+      }
+    }
     case 'todo/write': {
       const merged = mergeTodos(state.timing, event.data.todos, event.time)
       return { ...state, timing: merged.timing, capsule: { ...capsule, todos: merged.items, lastActivityAt: event.time } }
     }
     case 'tool/result': {
       const diffs = diffsFromMeta(event.data.meta)
+      // No durable change (non-fs tool, a read, or a future shape): return the
+      // SAME reference so the projection drive stays silent — the fold must
+      // not churn a frame per tool result. `lastActivityAt` is a turn-level
+      // fact, so it updates on turn/start, turn/end and todo/write only.
       if (diffs === undefined) {
-        return { ...state, capsule: { ...capsule, lastActivityAt: event.time } }
+        return state
       }
       return { ...state, capsule: { ...capsule, files: addDiffs(capsule.files, diffs), lastActivityAt: event.time } }
     }

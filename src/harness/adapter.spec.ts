@@ -168,5 +168,49 @@ describe('historyStatusOf', () => {
   })
 })
 
+describe('applyFold — turn/end completion inference', () => {
+  it('advances the in-progress item to completed on a completed turn', () => {
+    let state = initialFold()
+    state = applyFold(state, todoWrite(100, [{ content: 'a', status: 'in_progress' }]))
+    state = applyFold(state, turnEnd(200, 'completed'))
+
+    expect(state.capsule.todos[0]!.status).toBe('completed')
+    expect(state.capsule.todos[0]!.completedAt).toBe(200)
+  })
+
+  it('keeps the plan untouched on failing, stalled, or token-capped turns', () => {
+    for (const kind of ['error', 'aborted', 'interrupted', 'blocked', 'max-tokens']) {
+      let state = initialFold()
+      state = applyFold(state, todoWrite(100, [{ content: 'a', status: 'in_progress' }]))
+      state = applyFold(state, turnEnd(200, kind))
+      expect(state.capsule.todos[0]!.status, kind).toBe('in_progress')
+    }
+  })
+
+  it('preserves pending items when the active one completes', () => {
+    let state = initialFold()
+    state = applyFold(state, todoWrite(100, [
+      { content: 'a', status: 'in_progress' },
+      { content: 'b', status: 'pending' },
+    ]))
+    state = applyFold(state, turnEnd(200, 'completed'))
+
+    expect(state.capsule.todos.map(t => t.status)).toEqual(['completed', 'pending'])
+  })
+})
+
+describe('applyFold — frame storm guard', () => {
+  it('returns the same reference for tool/result without diffs', () => {
+    let state = initialFold()
+    state = applyFold(state, todoWrite(100, [{ content: 'a', status: 'in_progress' }]))
+    const before = state
+
+    expect(applyFold(state, toolResult(200, undefined))).toBe(before)
+    expect(applyFold(state, toolResult(300, { notDiffs: true }))).toBe(before)
+    // ...but a diff-carrying result still folds and changes the reference.
+    expect(applyFold(state, toolResult(400, { diffs: [{ path: 'a.ts', oldText: null, newText: 'x' }] }))).not.toBe(before)
+  })
+})
+
 /** Keep the fold-state type referenced so typecheck covers the export. */
 export type { CapsuleFoldState }

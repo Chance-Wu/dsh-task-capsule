@@ -38,6 +38,20 @@ export const zh = {
   'panel.error.detail': '错误详情',
   'chip.counts': '任务 已完成{done} 进行中{active} 待处理{pending}',
   'chip.sessionTask': '会话任务处理',
+  'history.aborted': '已中止',
+  'history.interrupted': '已中断',
+  'panel.recent': '最近任务',
+  'panel.allDone': '全部完成',
+  'panel.files': '改动 {count} 个文件 · +{additions} −{deletions}',
+  'panel.stats': '今日 {today} · 成功率 {rate}% · 平均 {avg}',
+  'settings.loading': '加载中…',
+  'settings.title': '任务胶囊',
+  'settings.showDuration': '显示逐任务耗时',
+  'settings.showCurrentOp': '显示当前操作',
+  'settings.autoExpandFailed': '失败时自动展开',
+  'settings.alwaysVisible': '始终显示胶囊',
+  'settings.keepAfterDoneMs': '完成态保留时长（毫秒）',
+  'settings.historyLimit': '历史容量',
 } as const
 
 /** English dictionary, key-identical to the Chinese source of truth. */
@@ -58,6 +72,20 @@ export const en: Record<TaskCapsuleKey, string> = {
   'panel.error.detail': 'Error detail',
   'chip.counts': 'Task {done} done · {active} active · {pending} pending',
   'chip.sessionTask': 'Task processing',
+  'history.aborted': 'Aborted',
+  'history.interrupted': 'Interrupted',
+  'panel.recent': 'Recent tasks',
+  'panel.allDone': 'All done',
+  'panel.files': '{count} files · +{additions} −{deletions}',
+  'panel.stats': 'Today {today} · {rate}% success · avg {avg}',
+  'settings.loading': 'Loading…',
+  'settings.title': 'Task Capsule',
+  'settings.showDuration': 'Show per-task durations',
+  'settings.showCurrentOp': 'Show current operation',
+  'settings.autoExpandFailed': 'Auto-expand on failure',
+  'settings.alwaysVisible': 'Always show the capsule',
+  'settings.keepAfterDoneMs': 'Completion linger (ms)',
+  'settings.historyLimit': 'History limit',
 }
 
 /** Key domain of the `taskCapsule` namespace (zh is the source of truth). */

@@ -102,6 +102,8 @@ export interface CapsuleSettings {
   autoExpandFailed: boolean
   /** Recent-history ring capacity. */
   historyLimit: 3 | 5 | 10
+  /** Keep the capsule visible even when the session is idle with no activity. */
+  alwaysVisible: boolean
 }
 
 declare module '@deepseek-ai/dsh-session-projection/types' {

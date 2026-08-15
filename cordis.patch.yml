@@ -14,3 +14,4 @@
         historyLimit: 5
         showDuration: true
         showCurrentOp: true
+        alwaysVisible: false

@@ -7,12 +7,13 @@
  */
 
 import type { RunningToolCall } from '@deepseek-ai/dsh-client-runtime/client'
-import type { TaskItem } from '../types/capsule.ts'
+import type { HistoryEntry, TaskItem } from '../types/capsule.ts'
 
 /**
  * Per-status counts of a plan: completed / in progress / pending. The
  * compact capsule chip shows these as its title (`任务 已完成3 进行中1
- * 待处理5`), replacing the task name once the agent has a todo plan.
+ * 待处理5`), replacing the task name once the agent has a todo plan; the
+ * elapsed clock follows, set off by a middle dot.
  */
 export function todoCounts(todos: readonly TaskItem[]): { done: number; active: number; pending: number } {
   let done = 0
@@ -22,6 +23,41 @@ export function todoCounts(todos: readonly TaskItem[]): { done: number; active: 
     else if (item.status === 'in_progress') active += 1
   }
   return { done, active, pending: todos.length - done - active }
+}
+
+/** Compact done/total progress for the terminal chip: `3/5`. */
+export function progressLabel(done: number, total: number): string {
+  return `${done}/${total}`
+}
+
+/** One-line stats over the recent-history ring. */
+export interface HistoryStats {
+  /** Tasks finished today (same local calendar day as `now`). */
+  today: number
+  /** Success percentage (0–100, rounded); 100 when there are no entries. */
+  successRate: number
+  /** Mean duration in ms across the entries (0 when empty). */
+  avgDurationMs: number
+}
+
+/** Aggregate the ring into the thin stats line shown above the recent list. */
+export function historyStats(entries: readonly HistoryEntry[], now: number): HistoryStats {
+  if (entries.length === 0) return { today: 0, successRate: 100, avgDurationMs: 0 }
+  const day = new Date(now)
+  const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime()
+  let today = 0
+  let successes = 0
+  let totalMs = 0
+  for (const entry of entries) {
+    if (entry.startedAt >= dayStart) today += 1
+    if (entry.status === 'success') successes += 1
+    totalMs += entry.durationMs
+  }
+  return {
+    today,
+    successRate: Math.round((successes / entries.length) * 100),
+    avgDurationMs: Math.round(totalMs / entries.length),
+  }
 }
 
 /**

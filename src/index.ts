@@ -35,6 +35,7 @@ export const Config: z<Config> = z.object({
   historyLimit: z.union([z.const(3), z.const(5), z.const(10)]),
   showDuration: z.boolean(),
   showCurrentOp: z.boolean(),
+  alwaysVisible: z.boolean(),
 })
 
 /** Design §13 defaults, applied before the patch config is merged. */
@@ -44,6 +45,7 @@ const DEFAULT_SETTINGS: CapsuleSettings = {
   historyLimit: 5,
   showDuration: true,
   showCurrentOp: true,
+  alwaysVisible: false,
 }
 
 /** Compose the task capsule into the host. */

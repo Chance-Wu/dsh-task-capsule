@@ -1,12 +1,14 @@
 /**
  * dsh-task-capsule browser half: registers the session-header capsule — a
  * compact, always-visible task status indicator (phase 2: status → task →
- * time, nothing management-shaped). The settings section and recent-task
- * surfaces were cut in phase 2; configuration rides the patch config.
+ * time, nothing management-shaped). Phase 3 lifts two of the phase-2 cuts:
+ * the settings panel section (runtime toggles writing to the plugin's own
+ * settings resource) and the recent-task list inside the expanded panel.
  *
  * Data flows through the framework session kit (`useProjection` for the
  * host-computed capsule facts, `useSession` for the live status) plus the
- * tiny same-origin `/api/task-capsule/settings` resource for display flags.
+ * tiny same-origin `/api/task-capsule` resources for display flags and the
+ * recent-task ring.
  * @module dsh-task-capsule/client
  */
 
@@ -15,14 +17,17 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // `ctx.locale` service merge into scope.
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { CapsuleChip } from './CapsuleChip.tsx'
+import { SettingsSection } from './SettingsSection.tsx'
 import { en, NS, zh } from './locales.ts'
 
-/** Required services for locale registration and the header slot entry. */
+/** Required services for locale registration and the slot entries. */
 export const inject = ['sessions', 'slots', 'locale']
 
 /**
- * Browser plugin body: mount the session-header capsule.
+ * Browser plugin body: mount the session-header capsule and the settings
+ * section.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
@@ -37,6 +42,16 @@ export function apply(ctx: ClientContext): void {
       order: 10,
       locale: NS,
     }, CapsuleChip))
+
+  // The settings section: one page in the harness settings panel, writing
+  // to the plugin's own /api/task-capsule/settings resource.
+  ctx.slots.inject('settings.section', () =>
+    ctx.slots.register({
+      name: 'settings.section',
+      id: 'task-capsule',
+      order: 50,
+      locale: NS,
+    }, SettingsSection))
 }
 
 export type { CapsuleChipProps } from './CapsuleChip.tsx'

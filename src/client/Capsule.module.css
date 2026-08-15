@@ -35,11 +35,28 @@
   background: var(--dsw-specific-tip);
 }
 
-.chipText {
+/* The front text (status word / task counts) truncates when the header is
+   narrow; the clock below never shrinks out of view. */
+.chipLabel {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* The elapsed time reads as a muted clock, set off from the status text
+   by a middle dot so the two parts never run together. */
+.chipTime {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 18px;
   font-variant-numeric: tabular-nums;
+}
+
+.chipTime::before {
+  content: '·';
+  margin: 0 6px;
+  color: var(--dsw-alias-label-caption);
 }
 
 /* A settled (terminal) capsule reads as a quiet record, not a live control. */
@@ -402,4 +419,155 @@
   line-height: 16px;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* ---- file-change summary (folded from fs tool result diffs) ---- */
+
+.filesLine {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-tertiary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- recent-task list (the host's persisted ring) ---- */
+
+.recent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+
+.recentHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.recentTitle {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dsw-alias-label-caption);
+}
+
+.recentStats {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-tertiary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.recentList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recentItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.recentItem[data-status='failed'],
+.recentItem[data-status='aborted'],
+.recentItem[data-status='interrupted'] {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.recentItem[data-status='success'] {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.recentStatus {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.recentCounts {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.recentDuration {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- settings section (the harness settings panel page) ---- */
+
+.settingsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settingsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.settingsLabel {
+  min-width: 0;
+  color: var(--dsw-alias-label-primary);
+}
+
+.settingsToggle {
+  flex: none;
+  accent-color: var(--dsw-alias-state-business-primary);
+}
+
+.settingsNumber {
+  flex: none;
+  box-sizing: border-box;
+  width: 96px;
+  padding: 3px 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: var(--dsw-specific-menu);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.settingsSelect {
+  flex: none;
+  box-sizing: border-box;
+  padding: 3px 6px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 6px;
+  background: var(--dsw-specific-menu);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
 }

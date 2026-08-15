@@ -1,12 +1,14 @@
 /**
  * The session-header capsule (phase 2 §1, §6): one compact status pill —
- * `● 任务 已完成3 进行中1 待处理5 02:18` — expanding into the task panel.
+ * `● 任务 已完成3 进行中1 待处理5 · 02:18` — expanding into the task panel.
  * The default surface carries the status point, the plan's per-status
- * counts (completed / in progress / pending), and the clock; sessions
- * without a todo plan show the fixed `会话任务处理` label. A finished task
- * shows the status word with its frozen duration (`✓ Task completed
- * 02:31`) and the panel auto-collapses shortly after completion — the
- * capsule is a status indicator, not a task browser.
+ * counts (completed / in progress / pending), and the clock; the elapsed
+ * time reads as a muted clock, set off from the status text by a middle
+ * dot so the two never run together. Sessions without a todo plan show
+ * the fixed `会话任务处理` label. A finished task shows the status word
+ * with its frozen duration (`✓ Task completed · 02:31`) and the panel
+ * auto-collapses shortly after completion — the capsule is a status
+ * indicator, not a task browser.
  *
  * The chip is a pure reader: everything it shows comes from the framework
  * session kit (`useSession`, `useProjection`) plus the settings resource.
@@ -19,7 +21,7 @@ import type { ConversationSnapshot, SessionId } from '@deepseek-ai/dsh-client-ru
 import type { CapsuleSettings, CapsuleState, CapsuleStatus } from '../types/capsule.ts'
 import { apiOf } from './api.ts'
 import { deriveStatus, isWaiting } from './status.ts'
-import { clipLong, formatDuration, todoCounts } from './format.ts'
+import { clipLong, formatDuration, progressLabel, todoCounts } from './format.ts'
 import { NS, STATUS_KEYS } from './locales.ts'
 import { StatusGlyph } from './StatusGlyph.tsx'
 import { CapsulePanel } from './CapsulePanel.tsx'
@@ -93,7 +95,8 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
     capsule.todos.length > 0 || capsule.startedAt !== undefined || capsule.files.paths.length > 0
   )
   const showingDone = doneAt !== null
-  const visible = snap.running || isWaiting(snap) || hasActivity || showingDone
+  // `alwaysVisible` pins the capsule even for an idle session with no activity.
+  const visible = settings?.alwaysVisible === true || snap.running || isWaiting(snap) || hasActivity || showingDone
 
   // The clock runs while anything on screen moves (live durations).
   useEffect(() => {
@@ -174,26 +177,35 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
     : Math.max(0, (capsule?.lastActivityAt ?? now) - (start ?? now))
   const durationText = start === undefined ? '—' : formatDuration(elapsedMs)
 
-  // Status → task counts → time. Terminal states drop the counts for the
-  // status word: `✓ Task completed 02:31`. Live states show the plan's
-  // per-status counts (`任务 已完成3 进行中1 待处理5`); sessions without a
-  // todo plan carry the fixed `会话任务处理` label (clipped both-ends for
-  // safety, a no-op on the short label). The full text rides the button's
-  // title/aria for hover and screen readers.
+  // Status → task counts → time. The visible chip splits the front text
+  // (status word / per-status counts / fixed plan-less label) from the
+  // clock, so the elapsed time reads as its own muted element: `任务 已完成3
+  // 进行中1 待处理5 · 02:18`. Terminal states keep the plan's done/total
+  // progress with the status word (`✓ 任务完成 5/5 · 02:31`) and drop the
+  // rest of the counts; sessions without a todo plan carry the fixed
+  // `会话任务处理` label (clipped both-ends for safety, a no-op on the short
+  // label). The full text rides the button's title/aria for hover and
+  // screen readers.
   const todos = capsule?.todos ?? []
   const counts = todoCounts(todos)
   const hasPlan = todos.length > 0
   const countsText = t('chip.counts', counts)
-  const chipText = terminal
-    ? `${t(STATUS_KEYS[status])} ${durationText}`
+  const doneSummary = hasPlan ? progressLabel(counts.done, todos.length) : ''
+  const labelText = terminal
+    ? hasPlan
+      ? `${t(STATUS_KEYS[status])} ${doneSummary}`
+      : t(STATUS_KEYS[status])
     : hasPlan
-      ? `${countsText} ${durationText}`
-      : `${clipLong(t('chip.sessionTask'), CHIP_NAME_MAX)} ${durationText}`
-  const chipFullText = terminal
-    ? chipText
+      ? countsText
+      : clipLong(t('chip.sessionTask'), CHIP_NAME_MAX)
+  const fullLabel = terminal
+    ? hasPlan
+      ? `${t(STATUS_KEYS[status])} ${doneSummary}`
+      : t(STATUS_KEYS[status])
     : hasPlan
-      ? `${countsText} ${durationText}`
-      : `${t('chip.sessionTask')} ${durationText}`
+      ? countsText
+      : t('chip.sessionTask')
+  const chipFullText = `${fullLabel} ${durationText}`
 
   const chipClass = terminal ? `${css.chip} ${css.chipDone}` : css.chip
 
@@ -209,7 +221,8 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
         onClick={() => { setNow(Date.now()); setOpen(current => !current) }}
       >
         <StatusGlyph status={status} />
-        <span className={css.chipText}>{chipText}</span>
+        <span className={css.chipLabel}>{labelText}</span>
+        <span className={css.chipTime} aria-hidden>{durationText}</span>
       </button>
       {open
         ? (

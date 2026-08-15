@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { clipLong, describeCall, durationLabel, formatDuration, todoCounts } from './format.ts'
+import { clipLong, describeCall, durationLabel, formatDuration, historyStats, progressLabel, todoCounts } from './format.ts'
 
 describe('formatDuration', () => {
   it('renders MM:SS under an hour', () => {
@@ -83,5 +83,37 @@ describe('todoCounts', () => {
 
   it('returns zeros for an empty plan', () => {
     expect(todoCounts([])).toEqual({ done: 0, active: 0, pending: 0 })
+  })
+})
+
+describe('progressLabel', () => {
+  it('renders done/total compactly', () => {
+    expect(progressLabel(3, 5)).toBe('3/5')
+    expect(progressLabel(0, 0)).toBe('0/0')
+  })
+})
+
+describe('historyStats', () => {
+  const entry = (startedAt: number, durationMs: number, status: 'success' | 'failed') => ({
+    sessionId: 's', status, startedAt, finishedAt: startedAt + durationMs, durationMs,
+    completedTodos: 0, totalTodos: 0, files: { paths: [], additions: 0, deletions: 0 },
+  })
+
+  it('aggregates today, success rate, and average duration', () => {
+    // Fixed "now": 2026-08-15 12:00 local. Use a stable constructor.
+    const now = new Date(2026, 7, 15, 12, 0, 0).getTime()
+    const today = new Date(2026, 7, 15, 9, 0, 0).getTime()
+    const yesterday = new Date(2026, 7, 14, 23, 0, 0).getTime()
+    const entries = [
+      entry(today, 60_000, 'success'),
+      entry(today, 180_000, 'failed'),
+      entry(yesterday, 60_000, 'success'),
+    ]
+
+    expect(historyStats(entries, now)).toEqual({ today: 2, successRate: 67, avgDurationMs: 100_000 })
+  })
+
+  it('returns neutral stats for an empty ring', () => {
+    expect(historyStats([], Date.now())).toEqual({ today: 0, successRate: 100, avgDurationMs: 0 })
   })
 })

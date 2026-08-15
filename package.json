@@ -2,6 +2,7 @@
   "name": "dsh-task-capsule",
   "version": "0.1.0",
   "description": "DeepSeek Harness task capsule — an always-visible, expandable status pill for the running task",
+  "packageManager": "pnpm@11.7.0",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -35,7 +36,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && tsdown --config tsdown.config.ts",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepare": "tsc -p tsconfig.json && tsdown --config tsdown.config.ts",
+    "dev:watch": "tsc -p tsconfig.json --watch & tsdown --config tsdown.config.ts --watch"
   },
   "files": [
     "lib/index.js",
@@ -71,8 +74,11 @@
     "@deepseek-ai/dsh-session": "^0.1.0-rc.5",
     "@deepseek-ai/dsh-session-projection": "0.1.0-rc.6",
     "@deepseek-ai/schemastery": "^3.18.1",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^22.20.0",
     "@types/react": "~18.3.1",
+    "jsdom": "^25.0.1",
     "lightningcss": "^1.33.0",
     "react": "^18.2.0",
     "tsdown": "^0.22.2",

@@ -39,6 +39,7 @@ export function sanitizeSettings(input: unknown): Partial<CapsuleSettings> {
   if (typeof raw.autoExpandFailed === 'boolean') out.autoExpandFailed = raw.autoExpandFailed
   if (typeof raw.showDuration === 'boolean') out.showDuration = raw.showDuration
   if (typeof raw.showCurrentOp === 'boolean') out.showCurrentOp = raw.showCurrentOp
+  if (typeof raw.alwaysVisible === 'boolean') out.alwaysVisible = raw.alwaysVisible
   if (typeof raw.historyLimit === 'number' && HISTORY_LIMITS.includes(raw.historyLimit)) {
     out.historyLimit = raw.historyLimit as 3 | 5 | 10
   }

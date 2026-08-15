@@ -10,7 +10,7 @@
 
 import type { RunningToolCall } from '@deepseek-ai/dsh-client-runtime/client'
 import type { TaskItem } from '../types/capsule.ts'
-import { describeCall, durationLabel, formatDuration } from './format.ts'
+import { clipLong, describeCall, durationLabel, formatDuration } from './format.ts'
 import css from './Capsule.module.css'
 
 /** Completed: a static check — the state ends, no celebration. */
@@ -84,7 +84,7 @@ export function TaskTree({ items, now, runningCalls, showDuration, showCurrentOp
             {item === active && op !== undefined ? (
               <span className={css.currentOp}>
                 <span className={css.currentOpLabel} aria-hidden>▸</span>
-                <span className={css.currentOpText} title={describeCall(op)}>{describeCall(op)}</span>
+                <span className={css.currentOpText} title={describeCall(op)}>{clipLong(describeCall(op), 64)}</span>
               </span>
             ) : null}
           </li>

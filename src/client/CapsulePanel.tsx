@@ -16,6 +16,7 @@ import { durationLabel, formatDuration } from './format.ts'
 import { waitingReason } from './status.ts'
 import { StatusGlyph } from './StatusGlyph.tsx'
 import { TaskTree } from './TaskTree.tsx'
+import { HistoryList } from './HistoryList.tsx'
 import css from './Capsule.module.css'
 
 /** Elapsed time: frozen at the last activity once the task is over. */
@@ -60,7 +61,12 @@ export function CapsulePanel({ snap, capsule, status, now, settings, titleOf, on
     : null
 
   const showCurrent = !isTerminal(status)
-  const currentName = showCurrent ? (activeTodo?.content ?? titleOf(snap.sessionId)) : null
+  // With a plan but no active item (everything done / the agent wrapping up),
+  // the row reads "all done"; without a plan it falls back to the session
+  // title. The live status is what carries the nuance either way.
+  const currentName = showCurrent
+    ? activeTodo?.content ?? (todos.length > 0 ? t('panel.allDone') : titleOf(snap.sessionId))
+    : null
   const currentDuration = activeTodo !== undefined
     ? durationLabel(activeTodo.startedAt, now)
     : formatDuration(elapsed(capsule, status, now))
@@ -89,6 +95,16 @@ export function CapsulePanel({ snap, capsule, status, now, settings, titleOf, on
         </div>
       ) : null}
 
+      {capsule !== undefined && capsule.files.paths.length > 0 ? (
+        <div className={css.filesLine} title={capsule.files.paths.join(' · ')}>
+          {t('panel.files', {
+            count: capsule.files.paths.length,
+            additions: capsule.files.additions,
+            deletions: capsule.files.deletions,
+          })}
+        </div>
+      ) : null}
+
       <TaskTree
         items={todos}
         now={now}
@@ -106,6 +122,8 @@ export function CapsulePanel({ snap, capsule, status, now, settings, titleOf, on
           {showError ? <div className={css.errorDetail} data-testid="capsule-error-detail">{errorText}</div> : null}
         </div>
       ) : null}
+
+      <HistoryList t={t} />
     </div>
   )
 }
