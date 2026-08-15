@@ -137,59 +137,56 @@
   50% { opacity: 0.35; }
 }
 
-/* ---- popover: the capsule morphs into the panel (phase 2 §7) ---- */
+/* ---- floating panel: portaled to <body>, fixed under the chip ---- */
 
-.popover {
-  position: absolute;
-  top: calc(100% + 5px);
-  right: 0;
-  z-index: 100;
+.popover,
+.popoverClosing {
+  position: fixed;
+  z-index: 1000;
   box-sizing: border-box;
   width: 300px;
   max-width: min(360px, calc(100vw - 32px));
-  max-height: min(440px, calc(100vh - 140px));
   padding: 10px;
-  overflow: auto;
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 12px;
   background: var(--dsw-specific-menu);
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
-  box-shadow: var(--dsw-shadow-lv3);
+  /* floating elevation: a soft ambient layer under a sharp contact shadow */
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.38),
+    0 4px 12px rgba(0, 0, 0, 0.24);
   transform-origin: top right;
-  animation: dsh-capsule-grow 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity;
 }
 
-/* Exit: the panel morphs back toward the chip (opacity + slight rise/scale)
-   before unmounting — a collapse, not a hard disappear. */
+/* Expand: the panel floats down from the chip with a springy settle —
+   a slight overshoot (scale 1.02) makes the "grown out of the chip" morph
+   read as physical, then eases home. */
+.popover {
+  overflow: auto;
+  animation: dsh-capsule-grow 240ms cubic-bezier(0.34, 1.35, 0.64, 1);
+}
+
+/* Exit (auto 缩回): a symmetric collapse — fade, rise and shrink back
+   toward the chip's corner before unmounting. */
 .popoverClosing {
-  position: absolute;
-  top: calc(100% + 5px);
-  right: 0;
-  z-index: 100;
-  box-sizing: border-box;
-  width: 300px;
-  max-width: min(360px, calc(100vw - 32px));
-  max-height: min(440px, calc(100vh - 140px));
-  padding: 10px;
   overflow: hidden;
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 12px;
-  background: var(--dsw-specific-menu);
-  box-shadow: var(--dsw-shadow-lv3);
-  transform-origin: top right;
   opacity: 0;
-  transform: translateY(4px) scale(0.97);
-  transition: opacity 150ms ease, transform 150ms ease;
+  transform: translateY(-6px) scale(0.94);
+  transition: opacity 150ms cubic-bezier(0.4, 0, 1, 1), transform 150ms cubic-bezier(0.4, 0, 1, 1);
   pointer-events: none;
 }
 
 @keyframes dsh-capsule-grow {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(8px) scale(0.95);
+    transform: translateY(-10px) scale(0.94);
   }
-  to {
+  70% {
+    transform: translateY(2px) scale(1.015);
+  }
+  100% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }

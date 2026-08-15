@@ -15,7 +15,8 @@
  * @module dsh-task-capsule/client/CapsuleChip
  */
 
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ConversationSnapshot, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { CapsuleAccent, CapsuleSettings, CapsuleState, CapsuleStatus } from '../types/capsule.ts'
@@ -62,10 +63,12 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
   const byId = useSessions(state => state.byId)
   const [settings, setSettings] = useState<CapsuleSettings | null>(null)
   const [open, setOpen] = useState(false)
-  // Exit-animation latch: the popover stays mounted (class toggled to
+  // Exit-animation latch: the floating panel stays mounted (class toggled to
   // .popoverClosing) for CLOSE_ANIM_MS so the collapse reads as a morph
   // back into the chip instead of a hard unmount.
   const [closing, setClosing] = useState(false)
+  // The floating panel's viewport anchor (under the chip, right-aligned).
+  const [pos, setPos] = useState<{ top: number; right: number; maxHeight: number } | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [doneAt, setDoneAt] = useState<number | null>(null)
   const wasRunning = useRef(false)
@@ -73,6 +76,7 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
   const prevStart = useRef<number | undefined>(undefined)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   // Load the runtime settings once; the panel refreshes them on expand.
   useEffect(() => {
@@ -211,10 +215,37 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
     return () => { alive = false }
   }, [open])
 
+  // Anchor the floating panel under the chip (right-aligned), re-measured on
+  // scroll/resize so it never detaches from the chip while open.
+  useLayoutEffect(() => {
+    if (!open && !closing) return
+    const anchor = (): void => {
+      const rect = triggerRef.current?.getBoundingClientRect()
+      if (rect === undefined) return
+      const top = rect.bottom + 6
+      const right = Math.max(8, window.innerWidth - rect.right)
+      setPos({
+        top,
+        right,
+        maxHeight: Math.max(120, window.innerHeight - top - 8),
+      })
+    }
+    anchor()
+    window.addEventListener('resize', anchor)
+    document.addEventListener('scroll', anchor, true)
+    return () => {
+      window.removeEventListener('resize', anchor)
+      document.removeEventListener('scroll', anchor, true)
+    }
+  }, [open, closing])
+
+  // Click-outside closes; the panel is portaled to <body>, so both the chip
+  // root and the floating panel count as "inside".
   useEffect(() => {
     if (!open && !closing) return
     const closeOutside = (event: PointerEvent): void => {
-      if (event.target instanceof Node && !rootRef.current?.contains(event.target)) {
+      const target = event.target
+      if (target instanceof Node && !rootRef.current?.contains(target) && !panelRef.current?.contains(target)) {
         closePanel()
       }
     }
@@ -222,12 +253,18 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
     return () => { document.removeEventListener('pointerdown', closeOutside) }
   }, [open, closing])
 
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if (event.key !== 'Escape' || (!open && !closing)) return
-    event.preventDefault()
-    closePanel()
-    triggerRef.current?.focus()
-  }
+  // ESC closes wherever focus is (the chip or the portaled panel).
+  useEffect(() => {
+    if (!open && !closing) return
+    const onKey = (event: globalThis.KeyboardEvent): void => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      closePanel()
+      triggerRef.current?.focus()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('keydown', onKey) }
+  }, [open, closing])
 
   if (!visible) return null
 
@@ -279,7 +316,7 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
     : undefined
 
   return (
-    <div ref={rootRef} className={css.root} style={rootStyle} onKeyDown={onKeyDown}>
+    <div ref={rootRef} className={css.root} style={rootStyle}>
       <button
         ref={triggerRef}
         type="button"
@@ -302,22 +339,31 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
         <span className={css.chipTime} aria-hidden>{durationText}</span>
       </button>
       {open || closing
-        ? (
-          <div className={open ? css.popover : css.popoverClosing}>
-            <CapsulePanel
-              snap={snap}
-              capsule={capsule}
-              status={status}
-              now={now}
-              settings={settings}
-              goal={goal}
-              accent={accent}
-              titleOf={titleOf}
-              onClose={closePanel}
-              t={t}
-            />
-          </div>
-        )
+        ? pos !== null
+          ? createPortal(
+            <div
+              ref={panelRef}
+              role="dialog"
+              aria-label={t('panel.title')}
+              className={open ? css.popover : css.popoverClosing}
+              style={{ top: pos.top, right: pos.right, maxHeight: pos.maxHeight }}
+            >
+              <CapsulePanel
+                snap={snap}
+                capsule={capsule}
+                status={status}
+                now={now}
+                settings={settings}
+                goal={goal}
+                accent={accent}
+                titleOf={titleOf}
+                onClose={closePanel}
+                t={t}
+              />
+            </div>,
+            document.body,
+          )
+          : null
         : null}
     </div>
   )
