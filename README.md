@@ -2,11 +2,11 @@
 
 > An always-visible, expandable task-status pill for the DeepSeek Harness session header — "what is it doing, how far along, how long has it taken", with almost no noise.
 
-DeepSeek Harness 的任务胶囊插件：把 Harness 的执行过程收敛成一个**始终可见、几乎不打扰**的任务状态指示器——默认只承担「状态 → 任务 → 时间」，二期（Interaction Polish）刻意砍掉了所有管理形态的 UI。
+DeepSeek Harness 的任务胶囊插件：把 Harness 的执行过程收敛成一个**始终可见、几乎不打扰**的任务状态指示器——默认只承担「状态 → 任务计数 → 时间」，二期（Interaction Polish）刻意砍掉了所有管理形态的 UI。
 
 ## 功能（二期形态）
 
-- **紧凑胶囊**（会话头部右侧）：`● Implement File Editor 02:18`——状态点 + 任务名 + 时钟式耗时（`MM:SS`，超一小时 `HH:MM:SS`；未开始显示 `—`）。
+- **紧凑胶囊**（会话头部右侧）：`● 任务 已完成3 进行中1 待处理5 02:18`——状态点 + 任务计数（已完成/进行中/待处理）+ 时钟式耗时（`MM:SS`，超一小时 `HH:MM:SS`；未开始显示 `—`）。未使用 todo 计划时会话退回显示会话标题。
   - 终态胶囊收起为记录：`✓ 任务完成 02:31`（耗时冻结，不随页面刷新增长）。
   - 运行/等待中的状态点是**呼吸动画**（轻微透明度脉动），不是转圈。
 - **展开面板**（胶囊"长大"成面板，180ms morph 过渡）：

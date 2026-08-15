@@ -1,11 +1,12 @@
 /**
  * The session-header capsule (phase 2 §1, §6): one compact status pill —
- * `● Implement File Editor 02:18` — expanding into the task panel. The
- * default surface carries exactly three facts (status → task → time): no
- * task counts, no percentages, no descriptions. A finished task shows the
- * status word with its frozen duration (`✓ Task completed 02:31`) and the
- * panel auto-collapses shortly after completion — the capsule is a status
- * indicator, not a task browser.
+ * `● 任务 已完成3 进行中1 待处理5 02:18` — expanding into the task panel.
+ * The default surface carries the status point, the plan's per-status
+ * counts (completed / in progress / pending), and the clock; sessions
+ * without a todo plan fall back to the session title. A finished task
+ * shows the status word with its frozen duration (`✓ Task completed
+ * 02:31`) and the panel auto-collapses shortly after completion — the
+ * capsule is a status indicator, not a task browser.
  *
  * The chip is a pure reader: everything it shows comes from the framework
  * session kit (`useSession`, `useProjection`) plus the settings resource.
@@ -18,7 +19,7 @@ import type { ConversationSnapshot, SessionId } from '@deepseek-ai/dsh-client-ru
 import type { CapsuleSettings, CapsuleState, CapsuleStatus } from '../types/capsule.ts'
 import { apiOf } from './api.ts'
 import { deriveStatus, isWaiting } from './status.ts'
-import { clipLong, formatDuration } from './format.ts'
+import { clipLong, formatDuration, todoCounts } from './format.ts'
 import { NS, STATUS_KEYS } from './locales.ts'
 import { StatusGlyph } from './StatusGlyph.tsx'
 import { CapsulePanel } from './CapsulePanel.tsx'
@@ -173,18 +174,27 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
     : Math.max(0, (capsule?.lastActivityAt ?? now) - (start ?? now))
   const durationText = start === undefined ? '—' : formatDuration(elapsedMs)
 
-  // Status → task → time. Terminal states drop the task title for the
-  // status word: `✓ Task completed 02:31`. Live states show the task name
-  // middle-clipped (both ends kept — the tail carries the actionable
-  // detail); the full text rides the button's title/aria for hover and
-  // screen readers.
+  // Status → task counts → time. Terminal states drop the counts for the
+  // status word: `✓ Task completed 02:31`. Live states show the plan's
+  // per-status counts (`任务 已完成3 进行中1 待处理5`); sessions without a
+  // todo plan keep the session title, middle-clipped (both ends kept — the
+  // tail carries the actionable detail). The full text rides the button's
+  // title/aria for hover and screen readers.
   const taskName = titleOf(sessionId)
+  const todos = capsule?.todos ?? []
+  const counts = todoCounts(todos)
+  const hasPlan = todos.length > 0
+  const countsText = t('chip.counts', counts)
   const chipText = terminal
     ? `${t(STATUS_KEYS[status])} ${durationText}`
-    : `${clipLong(taskName, CHIP_NAME_MAX)} ${durationText}`
+    : hasPlan
+      ? `${countsText} ${durationText}`
+      : `${clipLong(taskName, CHIP_NAME_MAX)} ${durationText}`
   const chipFullText = terminal
     ? chipText
-    : `${taskName} ${durationText}`
+    : hasPlan
+      ? `${countsText} ${durationText}`
+      : `${taskName} ${durationText}`
 
   const chipClass = terminal ? `${css.chip} ${css.chipDone}` : css.chip
 

@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { clipLong, describeCall, durationLabel, formatDuration } from './format.ts'
+import { clipLong, describeCall, durationLabel, formatDuration, todoCounts } from './format.ts'
 
 describe('formatDuration', () => {
   it('renders MM:SS under an hour', () => {
@@ -70,5 +70,18 @@ describe('describeCall', () => {
 
   it('falls back to the tool name on unreadable arguments', () => {
     expect(describeCall(call('str_replace', 'not json'))).toBe('str_replace')
+  })
+})
+
+describe('todoCounts', () => {
+  const item = (status: 'pending' | 'in_progress' | 'completed') => ({ content: 'x', status })
+
+  it('counts completed, in-progress, and pending items', () => {
+    const todos = [item('completed'), item('completed'), item('in_progress'), item('pending'), item('pending')]
+    expect(todoCounts(todos)).toEqual({ done: 2, active: 1, pending: 2 })
+  })
+
+  it('returns zeros for an empty plan', () => {
+    expect(todoCounts([])).toEqual({ done: 0, active: 0, pending: 0 })
   })
 })

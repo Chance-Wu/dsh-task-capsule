@@ -7,6 +7,22 @@
  */
 
 import type { RunningToolCall } from '@deepseek-ai/dsh-client-runtime/client'
+import type { TaskItem } from '../types/capsule.ts'
+
+/**
+ * Per-status counts of a plan: completed / in progress / pending. The
+ * compact capsule chip shows these as its title (`任务 已完成3 进行中1
+ * 待处理5`), replacing the task name once the agent has a todo plan.
+ */
+export function todoCounts(todos: readonly TaskItem[]): { done: number; active: number; pending: number } {
+  let done = 0
+  let active = 0
+  for (const item of todos) {
+    if (item.status === 'completed') done += 1
+    else if (item.status === 'in_progress') active += 1
+  }
+  return { done, active, pending: todos.length - done - active }
+}
 
 /**
  * Shorten a long label to at most `max` characters by keeping BOTH ends:
