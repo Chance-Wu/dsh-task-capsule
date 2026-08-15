@@ -110,6 +110,8 @@ export interface CapsuleSettings {
   keepAfterDoneMs: number
   /** Auto-expand a failed task to surface its error entry. */
   autoExpandFailed: boolean
+  /** Auto-expand the panel while a task is running (collapse when done). */
+  autoExpandRunning: boolean
   /** Recent-history ring capacity. */
   historyLimit: 3 | 5 | 10
   /** Keep the capsule visible even when the session is idle with no activity. */

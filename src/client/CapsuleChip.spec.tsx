@@ -62,20 +62,22 @@ function renderChip(snapshot: ConversationSnapshot, value: CapsuleState | undefi
 }
 
 describe('CapsuleChip compact title', () => {
-  it('shows per-status counts while running with a plan', () => {
+  it('shows per-status counts while running with a plan (and auto-expands)', () => {
     renderChip(snap({ running: true }), capsule({
       startedAt: 1000,
       todos: [todo('a', 'completed'), todo('b', 'in_progress'), todo('c', 'pending')],
     }))
 
-    const button = screen.getByRole('button')
+    const button = screen.getByRole('button', { name: /已完成1 进行中1 待处理1/ })
     expect(button.textContent).toContain('任务 已完成1 进行中1 待处理1')
+    // Auto-expand on the running edge opened the panel.
+    expect(screen.getByText('Task Capsule')).toBeDefined()
   })
 
   it('shows the fixed plan-less label while running without a plan', () => {
     renderChip(snap({ running: true }), capsule({ startedAt: 1000 }))
 
-    const button = screen.getByRole('button')
+    const button = screen.getByRole('button', { name: /会话任务处理/ })
     expect(button.textContent).toContain('会话任务处理')
   })
 
@@ -86,7 +88,7 @@ describe('CapsuleChip compact title', () => {
       todos: [todo('a', 'completed'), todo('b', 'completed')],
     }))
 
-    const button = screen.getByRole('button')
+    const button = screen.getByRole('button', { name: /任务完成/ })
     expect(button.getAttribute('aria-label')).toContain('任务完成')
     expect(button.getAttribute('aria-label')).toContain('2/2')
   })

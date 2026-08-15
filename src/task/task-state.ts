@@ -43,6 +43,7 @@ export function sanitizeSettings(input: unknown): Partial<CapsuleSettings> {
     out.keepAfterDoneMs = Math.min(MAX_KEEP_MS, Math.max(0, Math.trunc(raw.keepAfterDoneMs)))
   }
   if (typeof raw.autoExpandFailed === 'boolean') out.autoExpandFailed = raw.autoExpandFailed
+  if (typeof raw.autoExpandRunning === 'boolean') out.autoExpandRunning = raw.autoExpandRunning
   if (typeof raw.showDuration === 'boolean') out.showDuration = raw.showDuration
   if (typeof raw.showCurrentOp === 'boolean') out.showCurrentOp = raw.showCurrentOp
   if (typeof raw.alwaysVisible === 'boolean') out.alwaysVisible = raw.alwaysVisible

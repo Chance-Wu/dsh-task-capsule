@@ -11,6 +11,7 @@
         # 设计文档 §13：默认保留完成态 8 秒，失败不自动展开，历史 5 条。
         keepAfterDoneMs: 8000
         autoExpandFailed: false
+        autoExpandRunning: true
         historyLimit: 5
         showDuration: true
         showCurrentOp: true

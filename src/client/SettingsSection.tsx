@@ -65,6 +65,7 @@ export function SettingsSection({ t }: SettingsSectionProps) {
       <Toggle label={t('settings.showCurrentOp')} checked={settings.showCurrentOp} onChange={showCurrentOp => set({ showCurrentOp })} />
       <Toggle label={t('settings.showProgress')} checked={settings.showProgress} onChange={showProgress => set({ showProgress })} />
       <Toggle label={t('settings.autoExpandFailed')} checked={settings.autoExpandFailed} onChange={autoExpandFailed => set({ autoExpandFailed })} />
+      <Toggle label={t('settings.autoExpandRunning')} checked={settings.autoExpandRunning} onChange={autoExpandRunning => set({ autoExpandRunning })} />
       <Toggle label={t('settings.alwaysVisible')} checked={settings.alwaysVisible} onChange={alwaysVisible => set({ alwaysVisible })} />
       <Toggle label={t('settings.traceFrames')} checked={settings.traceFrames} onChange={traceFrames => set({ traceFrames })} />
       <label className={css.settingsRow}>

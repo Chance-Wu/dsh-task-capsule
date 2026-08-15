@@ -45,6 +45,9 @@ const DEFAULT_KEEP_MS = 8000
 /** How long an open panel lingers after its task finishes before collapsing. */
 const AUTO_COLLAPSE_MS = 1500
 
+/** The panel's exit-animation length (must match .popoverClosing's transition). */
+const CLOSE_ANIM_MS = 150
+
 /** Max characters of the task name shown in the compact chip (both ends kept). */
 const CHIP_NAME_MAX = 20
 
@@ -59,9 +62,14 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
   const byId = useSessions(state => state.byId)
   const [settings, setSettings] = useState<CapsuleSettings | null>(null)
   const [open, setOpen] = useState(false)
+  // Exit-animation latch: the popover stays mounted (class toggled to
+  // .popoverClosing) for CLOSE_ANIM_MS so the collapse reads as a morph
+  // back into the chip instead of a hard unmount.
+  const [closing, setClosing] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [doneAt, setDoneAt] = useState<number | null>(null)
   const wasRunning = useRef(false)
+  const prevRunning = useRef(false)
   const prevStart = useRef<number | undefined>(undefined)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -101,6 +109,11 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
     prevStart.current = start
   }, [capsule])
 
+  // Whether the plan is fully completed (or there is no plan): the state the
+  // panel collapses back to the chip on.
+  const allDone = (capsule?.todos.length ?? 0) === 0
+    || (capsule?.todos.every(item => item.status === 'completed') ?? false)
+
   const status = deriveStatus(snap, capsule)
   // The framework's goal projection (composed deployments only): the panel
   // shows the active objective under the status row.
@@ -131,25 +144,52 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
 
   // Close the popover when the control itself disappears.
   useEffect(() => {
-    if (!visible && open) setOpen(false)
+    if (!visible && open) {
+      setClosing(false)
+      setOpen(false)
+    }
   }, [visible, open])
 
+  // Close with the exit animation: toggle the closing class, then unmount.
+  const closePanel = (): void => {
+    if (!open || closing) return
+    setClosing(true)
+    window.setTimeout(() => {
+      setOpen(false)
+      setClosing(false)
+    }, CLOSE_ANIM_MS)
+  }
+
+  // Auto-expand while a task runs: the idle → running edge opens the panel
+  // so the live plan is visible (a later manual close stays closed until the
+  // next task starts). Auto-collapse happens when the task completes AND the
+  // plan is fully done — back to the compact capsule state.
+  useEffect(() => {
+    const started = snap.running && !prevRunning.current
+    prevRunning.current = snap.running
+    if (started && settings?.autoExpandRunning !== false) {
+      setClosing(false)
+      setOpen(true)
+    }
+  }, [snap.running, settings?.autoExpandRunning])
+
   // Auto-collapse: when the open panel's task finishes (the same running →
-  // idle latch that freezes the done time), give the completion a moment to
-  // register, then collapse — the capsule stays as the compact done chip
-  // (phase 2 §11). Keyed on the done latch itself, which fires exactly once
-  // per task, rather than on the derived status (which can flicker across
-  // turns within one task).
+  // idle latch that freezes the done time) AND every todo is completed (or
+  // there is no plan), give the completion a moment to register, then morph
+  // back into the compact chip. A failed/stalled plan stays open so the
+  // error entry is visible. Keyed on the done latch itself, which fires
+  // exactly once per task, rather than on the derived status (which can
+  // flicker across turns within one task).
   const prevDone = useRef<number | null>(null)
   useEffect(() => {
     const wasDone = prevDone.current !== null
     prevDone.current = doneAt
     if (!open || wasDone) return
-    if (doneAt !== null) {
-      const timer = setTimeout(() => setOpen(false), AUTO_COLLAPSE_MS)
+    if (doneAt !== null && allDone) {
+      const timer = setTimeout(closePanel, AUTO_COLLAPSE_MS)
       return () => clearTimeout(timer)
     }
-  }, [doneAt, open])
+  }, [doneAt, open, allDone])
 
   // Auto-expand a failed task when the setting asks for it.
   const autoExpanded = useRef(false)
@@ -172,20 +212,20 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
   }, [open])
 
   useEffect(() => {
-    if (!open) return
+    if (!open && !closing) return
     const closeOutside = (event: PointerEvent): void => {
       if (event.target instanceof Node && !rootRef.current?.contains(event.target)) {
-        setOpen(false)
+        closePanel()
       }
     }
     document.addEventListener('pointerdown', closeOutside)
     return () => { document.removeEventListener('pointerdown', closeOutside) }
-  }, [open])
+  }, [open, closing])
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
-    if (event.key !== 'Escape' || !open) return
+    if (event.key !== 'Escape' || (!open && !closing)) return
     event.preventDefault()
-    setOpen(false)
+    closePanel()
     triggerRef.current?.focus()
   }
 
@@ -247,15 +287,23 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
         aria-expanded={open}
         aria-label={chipFullText}
         title={chipFullText}
-        onClick={() => { setNow(Date.now()); setOpen(current => !current) }}
+        onClick={() => {
+          setNow(Date.now())
+          if (open) {
+            closePanel()
+          } else {
+            setClosing(false)
+            setOpen(true)
+          }
+        }}
       >
         <StatusGlyph status={status} />
         <span className={css.chipLabel}>{labelText}</span>
         <span className={css.chipTime} aria-hidden>{durationText}</span>
       </button>
-      {open
+      {open || closing
         ? (
-          <div className={css.popover}>
+          <div className={open ? css.popover : css.popoverClosing}>
             <CapsulePanel
               snap={snap}
               capsule={capsule}
@@ -265,7 +313,7 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
               goal={goal}
               accent={accent}
               titleOf={titleOf}
-              onClose={() => setOpen(false)}
+              onClose={closePanel}
               t={t}
             />
           </div>

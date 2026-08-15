@@ -32,6 +32,7 @@ export interface Config extends Partial<CapsuleSettings> {}
 export const Config: z<Config> = z.object({
   keepAfterDoneMs: z.number(),
   autoExpandFailed: z.boolean(),
+  autoExpandRunning: z.boolean(),
   historyLimit: z.union([z.const(3), z.const(5), z.const(10)]),
   showDuration: z.boolean(),
   showCurrentOp: z.boolean(),
@@ -46,6 +47,7 @@ export const Config: z<Config> = z.object({
 const DEFAULT_SETTINGS: CapsuleSettings = {
   keepAfterDoneMs: 8000,
   autoExpandFailed: false,
+  autoExpandRunning: true,
   historyLimit: 5,
   showDuration: true,
   showCurrentOp: true,
