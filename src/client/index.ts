@@ -32,6 +32,9 @@ export const inject = ['sessions', 'slots', 'locale']
  */
 export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'task-capsule: dictionaries')
+  // Locale-bound translator for the settings-nav label (a thunk so the
+  // label follows the active locale; the shell resolves it at read time).
+  const t = ctx.locale.bind(NS)
 
   // The capsule: a compact status pill in the session header's utility
   // strip, expanding into the task panel.
@@ -51,6 +54,7 @@ export function apply(ctx: ClientContext): void {
       id: 'task-capsule',
       order: 50,
       locale: NS,
+      label: () => t('settings.title'),
     }, SettingsSection))
 }
 
