@@ -99,21 +99,23 @@ describe('historyStats', () => {
     completedTodos: 0, totalTodos: 0, files: { paths: [], additions: 0, deletions: 0 },
   })
 
-  it('aggregates today, success rate, and average duration', () => {
+  it('aggregates today, week, success rate, and average duration', () => {
     // Fixed "now": 2026-08-15 12:00 local. Use a stable constructor.
     const now = new Date(2026, 7, 15, 12, 0, 0).getTime()
     const today = new Date(2026, 7, 15, 9, 0, 0).getTime()
     const yesterday = new Date(2026, 7, 14, 23, 0, 0).getTime()
+    const nineDaysAgo = new Date(2026, 7, 6, 10, 0, 0).getTime()
     const entries = [
       entry(today, 60_000, 'success'),
       entry(today, 180_000, 'failed'),
       entry(yesterday, 60_000, 'success'),
+      entry(nineDaysAgo, 120_000, 'success'),
     ]
 
-    expect(historyStats(entries, now)).toEqual({ today: 2, successRate: 67, avgDurationMs: 100_000 })
+    expect(historyStats(entries, now)).toEqual({ today: 2, week: 3, successRate: 75, avgDurationMs: 105_000 })
   })
 
   it('returns neutral stats for an empty ring', () => {
-    expect(historyStats([], Date.now())).toEqual({ today: 0, successRate: 100, avgDurationMs: 0 })
+    expect(historyStats([], Date.now())).toEqual({ today: 0, week: 0, successRate: 100, avgDurationMs: 0 })
   })
 })

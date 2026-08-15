@@ -31,6 +31,14 @@ export function StatusGlyph({ status, className }: { status: CapsuleStatus; clas
           <span className={css.pauseBar} />
         </span>
       )
+    case 'turnGap':
+      // Between turns: the pause mark, muted — a step boundary, not a stop.
+      return (
+        <span className={`${css.glyph} ${css.glyphTurnGap} ${className ?? ''}`} aria-hidden>
+          <span className={css.pauseBar} />
+          <span className={css.pauseBar} />
+        </span>
+      )
     case 'success':
       return (
         <span className={`${css.glyph} ${css.glyphSuccess} ${className ?? ''}`} aria-hidden>

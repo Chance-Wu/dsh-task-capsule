@@ -15,10 +15,10 @@
  * @module dsh-task-capsule/client/CapsuleChip
  */
 
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ConversationSnapshot, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import type { CapsuleSettings, CapsuleState, CapsuleStatus } from '../types/capsule.ts'
+import type { CapsuleAccent, CapsuleSettings, CapsuleState, CapsuleStatus } from '../types/capsule.ts'
 import { apiOf } from './api.ts'
 import { deriveStatus, isWaiting } from './status.ts'
 import { clipLong, formatDuration, progressLabel, todoCounts } from './format.ts'
@@ -26,6 +26,15 @@ import { NS, STATUS_KEYS } from './locales.ts'
 import { StatusGlyph } from './StatusGlyph.tsx'
 import { CapsulePanel } from './CapsulePanel.tsx'
 import css from './Capsule.module.css'
+
+/** Accent → dsw semantic token; `auto` leaves the default in place. */
+const ACCENT_VARS: Record<CapsuleAccent, string | undefined> = {
+  auto: undefined,
+  business: 'var(--dsw-alias-state-business-primary)',
+  success: 'var(--dsw-alias-state-success-primary)',
+  warn: 'var(--dsw-alias-state-warn-primary)',
+  error: 'var(--dsw-alias-state-error-primary)',
+}
 
 /** Full props for the header-utilities slot entry. */
 export type CapsuleChipProps = PropsRuntime<'conversation.session.header.utilities'> & PropsLocale<typeof NS>
@@ -67,17 +76,19 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
   }, [])
 
   // Completion latch: a running → idle transition with task activity freezes
-  // the done time (a later direct prompt opens the next task).
+  // the done time (a later direct prompt opens the next task). An idle
+  // transition with more work still queued is a turn gap, not completion —
+  // the latch only fires when the queue has drained.
   useEffect(() => {
     if (snap.running) {
       wasRunning.current = true
       return
     }
-    if (wasRunning.current) {
+    if (wasRunning.current && (snap.queue?.length ?? 0) === 0) {
       wasRunning.current = false
       if (capsule !== undefined && capsule.startedAt !== undefined) setDoneAt(Date.now())
     }
-  }, [snap.running, capsule])
+  }, [snap.running, snap.queue, capsule])
 
   // A new task (a fresh direct prompt) resets the capsule's start; clear the
   // previous task's completion latch so the done styling never leaks into
@@ -91,12 +102,24 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
   }, [capsule])
 
   const status = deriveStatus(snap, capsule)
+  // The framework's goal projection (composed deployments only): the panel
+  // shows the active objective under the status row.
+  const goal = useProjection('goal') as { goal?: { objective?: string; phase?: string } } | undefined
   const hasActivity = capsule !== undefined && (
     capsule.todos.length > 0 || capsule.startedAt !== undefined || capsule.files.paths.length > 0
   )
   const showingDone = doneAt !== null
   // `alwaysVisible` pins the capsule even for an idle session with no activity.
   const visible = settings?.alwaysVisible === true || snap.running || isWaiting(snap) || hasActivity || showingDone
+
+  // Debug aid: count projection updates while traceFrames is on, so the
+  // frame-churn guard's effect is observable in the console.
+  const frameCount = useRef(0)
+  useEffect(() => {
+    if (settings?.traceFrames !== true) return
+    frameCount.current += 1
+    console.info(`[task-capsule] capsule frame #${frameCount.current}`)
+  }, [capsule, settings?.traceFrames])
 
   // The clock runs while anything on screen moves (live durations).
   useEffect(() => {
@@ -209,8 +232,14 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
 
   const chipClass = terminal ? `${css.chip} ${css.chipDone}` : css.chip
 
+  const accent = settings?.accent ?? 'auto'
+  const accentVar = ACCENT_VARS[accent]
+  const rootStyle: CSSProperties | undefined = accentVar !== undefined
+    ? { ['--dsh-capsule-accent' as string]: accentVar }
+    : undefined
+
   return (
-    <div ref={rootRef} className={css.root} onKeyDown={onKeyDown}>
+    <div ref={rootRef} className={css.root} style={rootStyle} onKeyDown={onKeyDown}>
       <button
         ref={triggerRef}
         type="button"
@@ -233,6 +262,8 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
               status={status}
               now={now}
               settings={settings}
+              goal={goal}
+              accent={accent}
               titleOf={titleOf}
               onClose={() => setOpen(false)}
               t={t}

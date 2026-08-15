@@ -34,6 +34,8 @@ export function progressLabel(done: number, total: number): string {
 export interface HistoryStats {
   /** Tasks finished today (same local calendar day as `now`). */
   today: number
+  /** Tasks finished in the trailing 7-day window (inclusive of today). */
+  week: number
   /** Success percentage (0–100, rounded); 100 when there are no entries. */
   successRate: number
   /** Mean duration in ms across the entries (0 when empty). */
@@ -42,19 +44,23 @@ export interface HistoryStats {
 
 /** Aggregate the ring into the thin stats line shown above the recent list. */
 export function historyStats(entries: readonly HistoryEntry[], now: number): HistoryStats {
-  if (entries.length === 0) return { today: 0, successRate: 100, avgDurationMs: 0 }
+  if (entries.length === 0) return { today: 0, week: 0, successRate: 100, avgDurationMs: 0 }
   const day = new Date(now)
   const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime()
+  const weekStart = dayStart - 6 * 86_400_000
   let today = 0
+  let week = 0
   let successes = 0
   let totalMs = 0
   for (const entry of entries) {
     if (entry.startedAt >= dayStart) today += 1
+    if (entry.startedAt >= weekStart) week += 1
     if (entry.status === 'success') successes += 1
     totalMs += entry.durationMs
   }
   return {
     today,
+    week,
     successRate: Math.round((successes / entries.length) * 100),
     avgDurationMs: Math.round(totalMs / entries.length),
   }

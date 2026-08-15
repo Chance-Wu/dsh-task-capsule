@@ -15,12 +15,22 @@ describe('sanitizeSettings', () => {
       showDuration: false,
       showCurrentOp: true,
       alwaysVisible: true,
+      showProgress: false,
+      traceFrames: true,
     })).toEqual({
       autoExpandFailed: true,
       showDuration: false,
       showCurrentOp: true,
       alwaysVisible: true,
+      showProgress: false,
+      traceFrames: true,
     })
+  })
+
+  it('accepts closed density and accent sets and rejects others', () => {
+    expect(sanitizeSettings({ density: 'compact', accent: 'warn' }))
+      .toEqual({ density: 'compact', accent: 'warn' })
+    expect(sanitizeSettings({ density: 'huge', accent: 'neon' })).toEqual({})
   })
 
   it('clamps keepAfterDoneMs into sane bounds', () => {

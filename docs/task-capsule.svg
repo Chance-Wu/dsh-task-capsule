@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="470" viewBox="0 0 720 470" font-family="-apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif">
+  <!-- dark canvas -->
+  <rect width="720" height="470" rx="14" fill="#17181b"/>
+
+  <!-- fake session header -->
+  <rect x="24" y="20" width="672" height="52" rx="10" fill="#1f2125"/>
+  <circle cx="48" cy="46" r="7" fill="#3fb950"/>
+  <text x="66" y="50" font-size="14" fill="#c9ccd3">dsh-change-center · 收尾验收</text>
+
+  <!-- the capsule pill -->
+  <rect x="352" y="32" width="256" height="28" rx="14" fill="#26282d" stroke="#34363c"/>
+  <circle cx="370" cy="46" r="4" fill="#4c9aff"/>
+  <text x="382" y="50" font-size="12" fill="#c9ccd3">任务 已完成8 进行中1 待处理1</text>
+  <text x="560" y="50" font-size="11" fill="#8b8f98" text-anchor="middle">· 02:18</text>
+  <text x="622" y="46" font-size="10" fill="#5f636c" text-anchor="middle">点击展开 ▼</text>
+
+  <!-- connector -->
+  <line x1="560" y1="62" x2="560" y2="96" stroke="#34363c" stroke-width="2"/>
+  <circle cx="560" cy="94" r="3" fill="#4c9aff"/>
+
+  <!-- expanded panel -->
+  <rect x="344" y="102" width="336" height="344" rx="12" fill="#232428" stroke="#3a3d44"/>
+
+  <!-- panel header -->
+  <text x="360" y="126" font-size="11" font-weight="600" letter-spacing="1" fill="#8b8f98">TASK CAPSULE</text>
+  <text x="660" y="126" font-size="13" fill="#8b8f98" text-anchor="middle">✕</text>
+
+  <!-- status line -->
+  <circle cx="368" cy="150" r="4" fill="#4c9aff"/>
+  <text x="380" y="154" font-size="12" font-weight="600" fill="#e8e9eb">执行中</text>
+  <text x="470" y="154" font-size="11" fill="#8b8f98">回合 3 · 步骤 41</text>
+
+  <!-- goal line -->
+  <text x="360" y="176" font-size="10" letter-spacing="1" fill="#8b8f98">目标</text>
+  <text x="392" y="176" font-size="11" fill="#a8abb3">dsh-change-center 4.x「Trust &amp; Scale」…</text>
+
+  <!-- current task + progress -->
+  <text x="360" y="202" font-size="13" font-weight="600" fill="#e8e9eb">通读现状:ChangeEvent/HistoryService</text>
+  <text x="660" y="202" font-size="11" fill="#8b8f98" text-anchor="middle">01:42</text>
+  <rect x="360" y="210" width="304" height="3" rx="1.5" fill="#34363c"/>
+  <rect x="360" y="210" width="243" height="3" rx="1.5" fill="#4c9aff"/>
+
+  <!-- files line -->
+  <text x="360" y="234" font-size="11" fill="#8b8f98">改动 3 个文件 · +12 −4</text>
+
+  <!-- task tree -->
+  <text x="360" y="262" font-size="12" fill="#8b8f98">✓ 通读现状:ChangeEvent/HistoryService</text>
+  <text x="660" y="262" font-size="11" fill="#6f737b" text-anchor="middle">—</text>
+  <rect x="348" y="272" width="328" height="30" rx="8" fill="#2a2c31"/>
+  <circle cx="368" cy="287" r="4" fill="#4c9aff"/>
+  <text x="380" y="291" font-size="12" font-weight="600" fill="#e8e9eb">4.1 Change Timeline:Focus 迷你时间轴</text>
+  <text x="660" y="291" font-size="11" fill="#8b8f98" text-anchor="middle">00:48</text>
+  <text x="388" y="307" font-size="11" fill="#8b8f98">▸ bash · mvn -q test -pl change-center</text>
+  <text x="360" y="322" font-size="12" fill="#6f737b">○ 4.5 Safe Apply:prepare/validate</text>
+
+  <!-- recent tasks -->
+  <line x1="360" y1="338" x2="664" y2="338" stroke="#34363c"/>
+  <text x="360" y="356" font-size="11" font-weight="600" letter-spacing="1" fill="#8b8f98">最近任务</text>
+  <text x="664" y="356" font-size="10" fill="#8b8f98" text-anchor="end">今日 3 · 本周 9 · 成功率 83% · 平均 07:12</text>
+  <text x="360" y="376" font-size="12" fill="#a8abb3">✓ 任务完成</text>
+  <text x="500" y="376" font-size="11" fill="#8b8f98">5/5</text>
+  <text x="664" y="376" font-size="11" fill="#8b8f98" text-anchor="middle">02:31</text>
+  <text x="360" y="396" font-size="12" fill="#f85149">! 任务失败</text>
+  <text x="500" y="396" font-size="11" fill="#8b8f98">1/4</text>
+  <text x="664" y="396" font-size="11" fill="#8b8f98" text-anchor="middle">09:04</text>
+  <text x="360" y="412" font-size="10" fill="#f85149">turn/end: error</text>
+  <rect x="596" y="398" width="44" height="18" rx="9" fill="none" stroke="#5a5e66"/>
+  <text x="618" y="410" font-size="10" fill="#c9ccd3" text-anchor="middle">重试</text>
+
+  <!-- legend -->
+  <text x="24" y="446" font-size="11" fill="#5f636c">呼吸点 = 工作中 · 状态点不转圈，无烟花/Toast —— 「现在在干什么、做到哪了、花了多久」</text>
+</svg>

@@ -36,6 +36,7 @@ function snap(overrides: Partial<ConversationSnapshot> = {}): ConversationSnapsh
     sessionId: 's1',
     running: false,
     pending: [],
+    queue: [],
     runningCalls: [],
     lastAgentError: null,
     ...overrides,

@@ -10,7 +10,7 @@
 import { useState } from 'react'
 import type { ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
-import type { CapsuleSettings, CapsuleState, CapsuleStatus } from '../types/capsule.ts'
+import type { CapsuleAccent, CapsuleSettings, CapsuleState, CapsuleStatus } from '../types/capsule.ts'
 import { NS, STATUS_KEYS } from './locales.ts'
 import { durationLabel, formatDuration } from './format.ts'
 import { waitingReason } from './status.ts'
@@ -37,6 +37,10 @@ export interface CapsulePanelProps {
   status: CapsuleStatus
   now: number
   settings: CapsuleSettings | null
+  /** The framework goal projection (composed deployments only). */
+  goal?: { goal?: { objective?: string; phase?: string } } | undefined
+  /** Accent selection for the running dot / progress fill. */
+  accent?: CapsuleAccent
   /** Resolve a session's display title; falls back to the session id. */
   titleOf: (sessionId: string) => string
   /** Close the panel (the × button). */
@@ -44,7 +48,7 @@ export interface CapsulePanelProps {
   t: TranslateNS<typeof NS>
 }
 
-export function CapsulePanel({ snap, capsule, status, now, settings, titleOf, onClose, t }: CapsulePanelProps) {
+export function CapsulePanel({ snap, capsule, status, now, settings, goal, accent, titleOf, onClose, t }: CapsulePanelProps) {
   const [showError, setShowError] = useState(false)
   const todos = capsule?.todos ?? []
   const activeTodo = todos.find(item => item.status === 'in_progress')
@@ -71,8 +75,16 @@ export function CapsulePanel({ snap, capsule, status, now, settings, titleOf, on
     ? durationLabel(activeTodo.startedAt, now)
     : formatDuration(elapsed(capsule, status, now))
 
+  // Thin done/total progress bar under the current task (P1).
+  const doneCount = todos.filter(item => item.status === 'completed').length
+  const progressPct = todos.length > 0 ? Math.round((doneCount / todos.length) * 100) : 0
+  const goalObjective = goal?.goal?.objective
+  const panelClass = settings?.density === 'compact'
+    ? `${css.panel} ${css.panelCompact}`
+    : css.panel
+
   return (
-    <div className={css.panel}>
+    <div className={panelClass} data-accent={accent ?? 'auto'}>
       <div className={css.panelHeader}>
         <span className={css.panelTitle}>{t('panel.title')}</span>
         <button type="button" className={css.panelClose} aria-label={t('panel.close')} onClick={onClose}>
@@ -88,10 +100,23 @@ export function CapsulePanel({ snap, capsule, status, now, settings, titleOf, on
         {statusLine !== null ? <span className={css.statusReason} title={statusLine}>{statusLine}</span> : null}
       </div>
 
+      {goalObjective !== undefined ? (
+        <div className={css.goalLine} title={goalObjective}>
+          <span className={css.goalLabel}>{t('panel.goal')}</span>
+          <span className={css.goalText}>{goalObjective}</span>
+        </div>
+      ) : null}
+
       {currentName !== null ? (
         <div className={css.currentTask}>
           <span className={css.currentTaskName} title={currentName}>{currentName}</span>
           <span className={css.currentTaskDuration}>{currentDuration}</span>
+        </div>
+      ) : null}
+
+      {settings?.showProgress !== false && todos.length > 0 ? (
+        <div className={css.progress} role="progressbar" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100} aria-label={`${doneCount}/${todos.length}`}>
+          <div className={css.progressFill} style={{ width: `${progressPct}%` }} />
         </div>
       ) : null}
 

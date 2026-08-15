@@ -12,7 +12,9 @@ import type { CapsuleState, CapsuleStatus } from '../types/capsule.ts'
 /**
  * The capsule status for the current snapshot. Order matters: a pending
  * approval outranks `running` (the agent is busy, but what the user sees is
- * a wait), and a blocked turn is a wait too.
+ * a wait), and a blocked turn is a wait too. An idle agent with more work
+ * queued is a TURN GAP, not a finished task — the plan is retained and the
+ * capsule stays live instead of flashing the terminal record between turns.
  */
 export function deriveStatus(snap: ConversationSnapshot, capsule: CapsuleState | undefined): CapsuleStatus {
   if (snap.pending.some(wait => wait.kind === 'approval' || wait.kind === 'question')) {
@@ -23,6 +25,8 @@ export function deriveStatus(snap: ConversationSnapshot, capsule: CapsuleState |
   const last = capsule?.lastTurnEndReason
   if (last === 'error' || last === 'aborted' || last === 'interrupted') return 'failed'
   if (last === 'blocked') return 'waiting'
+  // Idle with queued/steering work after a finished turn → between turns.
+  if (snap.queue.length > 0 && last !== undefined) return 'turnGap'
   // Any other recorded terminal reason (`completed`, `max-tokens`, …) means
   // the run ended — success, matching the history outcome mapping. Only a
   // session with no finished turn is still pending.

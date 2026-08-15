@@ -2,23 +2,9 @@
 
 > An always-visible, expandable task-status pill for the DeepSeek Harness session header — "what is it doing, how far along, how long has it taken", with almost no noise.
 
-DeepSeek Harness 的任务胶囊插件：把 Harness 的执行过程收敛成一个**始终可见、几乎不打扰**的任务状态指示器——「状态 → 任务计数 → 时间」。二期（Interaction Polish）砍掉了所有管理形态的 UI；三期在本仓库落地的迭代里，**把「最近任务列表」和「设置中心」从砍掉清单里拿了回来**，同时补上折叠层的正确性修复（turn 结束完成度推断、帧洪峰抑制）。
+DeepSeek Harness 的任务胶囊插件：把 Harness 的执行过程收敛成一个**始终可见、几乎不打扰**的任务状态指示器——「状态 → 任务计数 → 时间」。二期（Interaction Polish）砍掉了所有管理形态的 UI；三期在本仓库落地的迭代里，**把「最近任务列表」和「设置中心」从砍掉清单里拿了回来**，同时补上折叠层的正确性修复（turn 结束完成度推断、帧洪峰抑制）、回合间隔状态、进度条、目标行与密度/强调色设置。
 
-```
-● 任务 已完成3 进行中1 待处理5 · 02:18          ← 紧凑胶囊（会话头部）
-│   点击展开
-▼
-┌─ Task Capsule ✕ ──────────────────────────┐
-│ ● 执行中                                   │
-│ 通读现状:ChangeEvent/History…     01:42    │ ← 当前任务（无活动项时显示「全部完成」）
-│ 改动 3 个文件 · +12 −4                      │ ← 文件统计（fs 工具 diff 折叠）
-│  ✓ 通读现状:ChangeEvent/HistoryService      │
-│  ● 4.1 Change Timeline:Focus 迷你时间轴     │ ← 当前 > 已完成 > 等待
-│  ○ 4.5 Safe Apply:prepare/validate          │
-│ ── 最近任务 ────────── 今日 3 · 成功率 67% · │ ← 历史环形缓冲 + 轻量统计
-│  ✓ 任务完成       5/5  02:31                │
-└────────────────────────────────────────────┘
-```
+![task-capsule mock](docs/task-capsule.svg)
 
 ## 功能
 
@@ -34,9 +20,9 @@ DeepSeek Harness 的任务胶囊插件：把 Harness 的执行过程收敛成一
   - **文件统计行**：`改动 3 个文件 · +12 −4`（来自 fs 工具 `tool/result` 的 diff 折叠）。
   - 任务列表，视觉层级严格 **当前 > 已完成 > 等待**；当前任务行下方显示当前操作（正在编辑的文件 / 执行的命令，超长两端保留截断）。
   - 失败块：一行错误摘要 + `查看详情` 折叠展开，**不放日志查看器**。
-  - **最近任务**：宿主持久化环形缓冲（`$DSH_HOME/task-capsule-history.json`，重启不丢）的紧凑列表——状态词 + 完成数 + 耗时，顶部一行轻量统计（`今日 N · 成功率 X% · 平均 MM:SS`）。
-- **生命周期**：任务完成后面板 1.5s 自动收起，胶囊保留完成态（时长可配）；失败不强制打断（可配置自动展开）。状态切换、任务切换均为 150~220ms 内的轻动画，无烟花/Toast/弹窗。
-- **设置中心**：设置面板里注册了「任务胶囊」页，五个显示开关 + 保留时长 + 历史容量全部可运行时调整（写回 `/api/task-capsule/settings`，与 yaml 配置同源）。
+  - **最近任务**：宿主持久化环形缓冲（`$DSH_HOME/task-capsule-history.json`，重启不丢）的紧凑列表——状态词 + 完成数 + 耗时，顶部一行轻量统计（`今日 N · 本周 M · 成功率 X% · 平均 MM:SS`）。点击行打开对应会话；失败行显示原因并提供「重试」（重新入队一条「继续」提示）。
+- **生命周期**：任务完成后面板 1.5s 自动收起，胶囊保留完成态（时长可配）；失败不强制打断（可配置自动展开）。**回合间隔不当作任务完成**——agent 空闲但队列里还有工作时显示「回合间隔」且面板不收起。状态切换、任务切换均为 150~220ms 内的轻动画，无烟花/Toast/弹窗。
+- **设置中心**：设置面板里注册了「任务胶囊」页——显示开关（耗时/当前操作/进度条/失败展开/始终显示/帧追踪）、面板密度（舒适/紧凑）、强调色（自动/业务蓝/成功绿/警告黄/错误红）、保留时长、历史容量，全部可运行时调整（写回 `/api/task-capsule/settings`，与 yaml 配置同源）。
 
 ## 语义（为什么胶囊和聊天可能"看起来不同步"）
 
@@ -57,9 +43,9 @@ task-history（agent 生命周期归档，宿主侧）──REST──▶ 客户
 ```
 
 - **任务计划**来自 agent 的 `todo_write` 工具；不用 todo 时胶囊退化为「状态 + 耗时」。
-- **状态**由客户端从实时快照合成：`running` / 等待 → `waiting`，turn 结局 + `lastAgentError` → `success/failed`，goal phase → `paused`。
+- **状态**由客户端从实时快照合成：`running` / 等待 → `waiting`，turn 结局 + `lastAgentError` → `success/failed`，goal phase → `paused`；**空闲但队列里还有工作 → `turnGap`（回合间隔）**。
 - 任务边界 = 一条直接人类提示词。
-- **帧洪峰抑制**：`tool/result` 不带 diff 时折叠返回同一引用，投影驱动层不产生帧——一次长会话里 `taskCapsule` 的帧数从「每个工具调用一帧」降到「每个 turn/todo 写一帧」量级。
+- **帧洪峰抑制**：`tool/result` 不带 diff 时折叠返回同一引用，投影驱动层不产生帧——一次长会话里 `taskCapsule` 的帧数从「每个工具调用一帧」降到「每个 turn/todo 写一帧」量级（`traceFrames: true` 可在控制台观察）。
 
 ## 配置
 
@@ -70,12 +56,16 @@ task-history（agent 生命周期归档，宿主侧）──REST──▶ 客户
     - id: task-capsule
       name: dsh-task-capsule
       config:
-        keepAfterDoneMs: 8000   # 完成态胶囊保留时长（0 = 立即收缩）
-        autoExpandFailed: false # 失败时自动展开面板
-        historyLimit: 5         # 最近任务历史环形缓冲容量（3 | 5 | 10）
-        showDuration: true      # 展开态显示逐任务耗时
-        showCurrentOp: true     # 显示当前操作行
-        alwaysVisible: false    # 空闲无活动时也保持胶囊可见
+        keepAfterDoneMs: 8000    # 完成态胶囊保留时长（0 = 立即收缩）
+        autoExpandFailed: false  # 失败时自动展开面板
+        historyLimit: 5          # 最近任务历史环形缓冲容量（3 | 5 | 10）
+        showDuration: true       # 展开态显示逐任务耗时
+        showCurrentOp: true      # 显示当前操作行
+        alwaysVisible: false     # 空闲无活动时也保持胶囊可见
+        showProgress: true       # 当前任务行下的细进度条
+        density: comfortable     # 面板密度（comfortable | compact）
+        accent: auto             # 强调色（auto | business | success | warn | error）
+        traceFrames: false       # 控制台追踪投影帧（调试）
 ```
 
 ## HTTP API（前缀 `/api/task-capsule`）
@@ -108,23 +98,26 @@ src/
 ├── harness/            # 事件 → 胶囊模型（纯折叠，可重放）
 │   ├── adapter.ts      # 投影注册 + 折叠（turn 结束推断、帧洪峰抑制）
 │   ├── event-parser.ts # 事件分类/窄化（direct prompt、diff meta、goal phase）
-│   └── task-mapper.ts  # todo 计时合并、turn 结局映射
+│   ├── task-mapper.ts  # todo 计时合并、turn 结局映射
+│   ├── fold-fuzz.spec.ts    # 确定性随机重放不变式
+│   └── integration.spec.ts  # 折叠 × 客户端存储 端到端同步
 ├── task/
 │   ├── task-manager.ts # 按会话折叠存储
-│   ├── task-history.ts # 历史环形缓冲（持久化）+ agent 生命周期归档
+│   ├── task-history.ts # 历史环形缓冲（持久化）+ agent 生命周期归档（子代理过滤）
 │   └── task-state.ts   # 设置服务 + 持久化
 ├── api/routes.ts       # REST 路由（history / settings）
 └── client/             # 浏览器半边
     ├── index.ts        # 注册 header.utilities 胶囊 + settings.section 设置页
     ├── CapsuleChip.tsx / CapsulePanel.tsx / StatusGlyph.tsx
     ├── TaskTree.tsx / HistoryList.tsx / SettingsSection.tsx
-    ├── status.ts / format.ts（progressLabel / historyStats）
-    ├── api.ts          # /api/task-capsule 的 settings GET/PUT + history GET 客户端
+    ├── status.ts / format.ts（progressLabel / historyStats）/
+    ├── api.ts          # settings GET/PUT + history GET + session.prompt 客户端
+    ├── session-nav.ts  # 最近任务点击打开会话（插件体注入）
     └── locales.ts
 ```
 
 ## 边界（仍明确砍掉）
 
-❌ 进度条/百分比　❌ 日志面板　❌ 任务搜索/筛选/标签/优先级/暂停/重试/拖拽　❌ 自定义主题　❌ Dashboard/数据分析　❌ 内置 To-dos 条改动。
+❌ 日志面板　❌ 任务搜索/筛选/标签/优先级/暂停/拖拽　❌ 自定义主题（强调色是 token 语义色的单选）　❌ Dashboard/数据分析（历史只有一行统计）　❌ 内置 To-dos 条改动。
 
 胶囊只做一件事：**随时可感知、几乎不打扰地告诉你「现在在干什么、做到哪了、花了多久」**。

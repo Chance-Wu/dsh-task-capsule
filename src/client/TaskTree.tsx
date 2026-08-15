@@ -84,6 +84,7 @@ export function TaskTree({ items, now, runningCalls, showDuration, showCurrentOp
             {item === active && op !== undefined ? (
               <span className={css.currentOp}>
                 <span className={css.currentOpLabel} aria-hidden>▸</span>
+                <span className={css.currentOpTool} aria-hidden>{op.name}</span>
                 <span className={css.currentOpText} title={describeCall(op)}>{clipLong(describeCall(op), 64)}</span>
               </span>
             ) : null}

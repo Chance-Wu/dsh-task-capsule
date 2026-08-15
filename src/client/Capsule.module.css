@@ -99,7 +99,7 @@
 }
 
 .glyphRunning {
-  color: var(--dsw-alias-state-business-primary);
+  color: var(--dsh-capsule-accent, var(--dsw-alias-state-business-primary));
 }
 
 .glyphWaiting {
@@ -108,6 +108,10 @@
 
 .glyphPaused {
   color: var(--dsw-alias-state-warn-primary);
+}
+
+.glyphTurnGap {
+  color: var(--dsw-alias-label-secondary);
 }
 
 .glyphSuccess {
@@ -570,4 +574,137 @@
   background: var(--dsw-specific-menu);
   color: var(--dsw-alias-label-primary);
   font-size: 12px;
+}
+
+/* ---- goal objective line (framework goal projection) ---- */
+
+.goalLine {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.goalLabel {
+  flex: none;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dsw-alias-label-caption);
+}
+
+.goalText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ---- thin done/total progress bar ---- */
+
+.progress {
+  box-sizing: border-box;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--dsw-alias-fill-l1);
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--dsh-capsule-accent, var(--dsw-alias-state-business-primary));
+  transition: width 200ms ease;
+}
+
+/* ---- compact density ---- */
+
+.panelCompact {
+  gap: 6px;
+}
+
+.panelCompact .treeItem {
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.panelCompact .currentTaskName {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* ---- recent-task row actions (open / retry / error) ---- */
+
+.recentMain {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.recentMain:hover .recentStatus,
+.recentMain:focus-visible .recentStatus {
+  text-decoration: underline;
+}
+
+.recentError {
+  flex-basis: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding-left: 8px;
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--dsw-alias-state-error-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.recentRetry {
+  flex: none;
+  padding: 1px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.recentRetry:hover:not(:disabled),
+.recentRetry:focus-visible {
+  border-color: var(--dsw-alias-state-error-primary);
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.recentRetry:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---- current-operation tool badge ---- */
+
+.currentOpTool {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--dsw-alias-fill-l1);
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--dsw-font-mono);
+  font-size: 10px;
+  line-height: 14px;
 }

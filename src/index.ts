@@ -36,6 +36,10 @@ export const Config: z<Config> = z.object({
   showDuration: z.boolean(),
   showCurrentOp: z.boolean(),
   alwaysVisible: z.boolean(),
+  showProgress: z.boolean(),
+  density: z.union([z.const('comfortable'), z.const('compact')]),
+  accent: z.union([z.const('auto'), z.const('business'), z.const('success'), z.const('warn'), z.const('error')]),
+  traceFrames: z.boolean(),
 })
 
 /** Design §13 defaults, applied before the patch config is merged. */
@@ -46,6 +50,10 @@ const DEFAULT_SETTINGS: CapsuleSettings = {
   showDuration: true,
   showCurrentOp: true,
   alwaysVisible: false,
+  showProgress: true,
+  density: 'comfortable',
+  accent: 'auto',
+  traceFrames: false,
 }
 
 /** Compose the task capsule into the host. */

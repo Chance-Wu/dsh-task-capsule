@@ -58,6 +58,7 @@ describe('finalize', () => {
       totalTodos: 3,
       files: { paths: ['x.ts'], additions: 2, deletions: 1 },
     })
+    expect(entry.error).toBe('error')
   })
 
   it('defaults to success when no turn ended yet', () => {

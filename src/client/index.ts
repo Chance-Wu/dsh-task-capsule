@@ -12,7 +12,7 @@
  * @module dsh-task-capsule/client
  */
 
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext, ISessions, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: pulls the conversation header-utilities SlotMap merge and the
 // `ctx.locale` service merge into scope.
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
@@ -20,6 +20,7 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { CapsuleChip } from './CapsuleChip.tsx'
 import { SettingsSection } from './SettingsSection.tsx'
+import { installSessionOpener } from './session-nav.ts'
 import { en, NS, zh } from './locales.ts'
 
 /** Required services for locale registration and the slot entries. */
@@ -35,6 +36,13 @@ export function apply(ctx: ClientContext): void {
   // Locale-bound translator for the settings-nav label (a thunk so the
   // label follows the active locale; the shell resolves it at read time).
   const t = ctx.locale.bind(NS)
+
+  // Wire the recent-task list's click-to-open through the sessions runtime.
+  // (`ctx.sessions` is host-typed as the session STORE in this mixed program;
+  // the client runtime's outward face is the ISessions contract.)
+  installSessionOpener(sessionId => {
+    (ctx.sessions as unknown as ISessions).open(sessionId as SessionId)
+  })
 
   // The capsule: a compact status pill in the session header's utility
   // strip, expanding into the task panel.

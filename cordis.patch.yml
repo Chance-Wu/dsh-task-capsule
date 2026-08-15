@@ -15,3 +15,7 @@
         showDuration: true
         showCurrentOp: true
         alwaysVisible: false
+        showProgress: true
+        density: comfortable
+        accent: auto
+        traceFrames: false

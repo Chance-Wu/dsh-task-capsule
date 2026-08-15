@@ -64,6 +64,8 @@ export function sanitizeHistory(input: unknown, limit: number): HistoryEntry[] {
     if (typeof totalTodos !== 'number' || !Number.isFinite(totalTodos)) continue
     const files = sanitizeFiles(entry.files)
     if (files === undefined) continue
+    const error = entry.error
+    if (error !== undefined && typeof error !== 'string') continue
     out.push({
       sessionId: entry.sessionId,
       status: status as HistoryStatus,
@@ -73,6 +75,7 @@ export function sanitizeHistory(input: unknown, limit: number): HistoryEntry[] {
       completedTodos,
       totalTodos,
       files,
+      ...(error !== undefined ? { error } : {}),
     })
   }
   return out.length > limit ? out.slice(0, limit) : out
@@ -106,11 +109,18 @@ export class TaskHistoryService extends Service {
     // closes the open task (a later direct prompt opens the next one).
     this.ctx.on('agent/status', ({ agent, status }) => {
       const sessionId = agent.session.id
-      if (status === 'running') {
+      // Subagent children fold no entry of their own: the ring lists
+      // user-facing tasks, and child work rides the parent's own task.
+      // (Folding child todo counts into the parent's capsule projection is
+      // out of scope — projections are per-session by framework design.)
+      const subagent = (agent.session.header.delegationDepth ?? 0) > 0
+      if (status === 'running' && !subagent) {
         this.open.add(sessionId)
       } else if (status === 'idle' && this.open.delete(sessionId)) {
         const fold = this.folds.current(sessionId)
         if (fold !== undefined) this.push(finalize(sessionId, fold, Date.now()))
+        this.folds.drop(sessionId)
+      } else if (status === 'idle' && subagent) {
         this.folds.drop(sessionId)
       }
     })
@@ -161,14 +171,20 @@ export function finalize(sessionId: string, fold: CapsuleFoldState, finishedAt: 
   const startedAt = capsule.startedAt ?? finishedAt
   const totalTodos = capsule.todos.length
   const completedTodos = capsule.todos.filter(todo => todo.status === 'completed').length
+  const reason = capsule.lastTurnEndReason
+  const status = historyStatusOf(reason ?? 'completed')
+  // Carry the turn/end reason as the failure detail when the task did not
+  // end cleanly (the recent list surfaces it; a clean task carries none).
+  const error = status === 'success' ? undefined : (reason ?? undefined)
   return {
     sessionId,
-    status: historyStatusOf(capsule.lastTurnEndReason ?? 'completed'),
+    status,
     startedAt,
     finishedAt,
     durationMs: Math.max(0, finishedAt - startedAt),
     completedTodos,
     totalTodos,
     files: capsule.files,
+    ...(error !== undefined ? { error } : {}),
   }
 }

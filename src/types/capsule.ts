@@ -30,6 +30,8 @@ export type CapsuleStatus =
   | 'failed'
   | 'paused'
   | 'waiting'
+  /** A completed turn ended but more work is queued — between turns, not done. */
+  | 'turnGap'
 
 /**
  * One plan entry with the timings the fold observes. The todo list is
@@ -88,7 +90,15 @@ export interface HistoryEntry {
   completedTodos: number
   totalTodos: number
   files: CapsuleFiles
+  /** Turn/end reason when the task did not end cleanly (failure detail). */
+  error?: string
 }
+
+/** Panel density: comfortable default, compact for dense surfaces. */
+export type CapsuleDensity = 'comfortable' | 'compact'
+
+/** Accent for the running dot / progress fill; `auto` follows the tokens. */
+export type CapsuleAccent = 'auto' | 'business' | 'success' | 'warn' | 'error'
 
 /** Runtime-tunable settings (design §13); defaults ride the patch config. */
 export interface CapsuleSettings {
@@ -104,6 +114,14 @@ export interface CapsuleSettings {
   historyLimit: 3 | 5 | 10
   /** Keep the capsule visible even when the session is idle with no activity. */
   alwaysVisible: boolean
+  /** Thin done/total progress bar under the current task row. */
+  showProgress: boolean
+  /** Panel density. */
+  density: CapsuleDensity
+  /** Accent for the running dot / progress fill. */
+  accent: CapsuleAccent
+  /** Console-trace projection frame churn (debug). */
+  traceFrames: boolean
 }
 
 declare module '@deepseek-ai/dsh-session-projection/types' {

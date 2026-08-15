@@ -25,6 +25,12 @@ const SETTINGS_FILE = 'task-capsule.json'
 /** Valid history capacities (design §13: 3 / 5 / 10). */
 const HISTORY_LIMITS: readonly number[] = [3, 5, 10]
 
+/** Valid panel densities. */
+const DENSITIES: readonly string[] = ['comfortable', 'compact']
+
+/** Valid accent selections. */
+const ACCENTS: readonly string[] = ['auto', 'business', 'success', 'warn', 'error']
+
 /** Clamp a keep-after-done duration to sane bounds (0 = hide immediately). */
 const MAX_KEEP_MS = 60_000
 
@@ -40,6 +46,14 @@ export function sanitizeSettings(input: unknown): Partial<CapsuleSettings> {
   if (typeof raw.showDuration === 'boolean') out.showDuration = raw.showDuration
   if (typeof raw.showCurrentOp === 'boolean') out.showCurrentOp = raw.showCurrentOp
   if (typeof raw.alwaysVisible === 'boolean') out.alwaysVisible = raw.alwaysVisible
+  if (typeof raw.showProgress === 'boolean') out.showProgress = raw.showProgress
+  if (typeof raw.traceFrames === 'boolean') out.traceFrames = raw.traceFrames
+  if (typeof raw.density === 'string' && DENSITIES.includes(raw.density)) {
+    out.density = raw.density as CapsuleSettings['density']
+  }
+  if (typeof raw.accent === 'string' && ACCENTS.includes(raw.accent)) {
+    out.accent = raw.accent as CapsuleSettings['accent']
+  }
   if (typeof raw.historyLimit === 'number' && HISTORY_LIMITS.includes(raw.historyLimit)) {
     out.historyLimit = raw.historyLimit as 3 | 5 | 10
   }

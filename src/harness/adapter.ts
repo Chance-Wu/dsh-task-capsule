@@ -140,7 +140,9 @@ export function applyCapsuleProjection(ctx: Context): void {
       init: initialFold,
       apply: applyFold,
       view: state => state.capsule,
-      stateVersion: 1,
+      // Bumped on every fold-semantics change: a version mismatch makes the
+      // restore path discard persisted checkpoint rows and refold the log.
+      stateVersion: 2,
     })
   })
 }

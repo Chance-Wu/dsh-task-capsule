@@ -9,9 +9,9 @@ import type { ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/clien
 import type { CapsuleState } from '../types/capsule.ts'
 import { deriveStatus, isWaiting, waitingReason } from './status.ts'
 
-/** A snapshot whose only relevant field is the pending list. */
-function snap(pending: unknown[]): ConversationSnapshot {
-  return { pending } as unknown as ConversationSnapshot
+/** A snapshot whose only relevant fields are pending/queue. */
+function snap(pending: unknown[], queue: unknown[] = []): ConversationSnapshot {
+  return { pending, queue } as unknown as ConversationSnapshot
 }
 
 /** A minimal capsule with only the given facts set. */
@@ -37,6 +37,12 @@ describe('deriveStatus', () => {
     expect(deriveStatus(snap([]), capsule({ lastTurnEndReason: 'blocked' }))).toBe('waiting')
     expect(deriveStatus(snap([]), capsule({ lastTurnEndReason: 'max-tokens' }))).toBe('success')
     expect(deriveStatus(snap([]), undefined)).toBe('pending')
+  })
+
+  it('reads an idle agent with queued work as a turn gap, not success', () => {
+    const done = capsule({ lastTurnEndReason: 'completed' })
+    expect(deriveStatus(snap([], [{ kind: 'steer' }]), done)).toBe('turnGap')
+    expect(deriveStatus(snap([], [{ kind: 'steer' }]), undefined)).toBe('pending')
   })
 
   it('maps the goal phase to paused', () => {

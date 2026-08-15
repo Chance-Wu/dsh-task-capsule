@@ -53,3 +53,31 @@ async function putJson(path: string, body: unknown): Promise<unknown> {
   }
   return response.json()
 }
+
+/**
+ * Queue a continuation prompt on a session through the harness's own
+ * same-origin `session.prompt` RPC (the retry affordance on failed recent
+ * tasks). Returns the accepted flag when the RPC succeeded.
+ */
+export async function promptSession(sessionId: string, text: string): Promise<boolean> {
+  const rpcId = `task-capsule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const response = await fetch('/api/session.prompt', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'client-request',
+      rpcId,
+      method: 'session.prompt',
+      payload: {
+        sessionId,
+        mode: 'queue',
+        content: [{ type: 'text', text }],
+      },
+    }),
+  })
+  if (!response.ok) {
+    throw new Error(`task-capsule: session.prompt failed with ${response.status}`)
+  }
+  const body = (await response.json()) as { result?: { ok?: boolean } }
+  return body.result?.ok === true
+}
