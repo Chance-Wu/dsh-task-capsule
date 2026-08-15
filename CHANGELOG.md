@@ -11,15 +11,17 @@ follow [SemVer](https://semver.org/).
 - **Auto-expand while running** (`autoExpandRunning`, default on): the panel
   opens on the task's running edge so the live plan is visible, and **morphs
   back to the compact chip when the plan is fully completed** (or empty);
-  failed/stalled plans stay open. The grow animation is a 240 ms elastic
-  morph (with a slight overshoot); the collapse is a symmetric 150 ms
-  fade-and-settle exit.
-- **Floating panel**: the expanded panel is now portaled to `<body>` and
+  failed/stalled plans stay open.
+- **Liquid floating panel**: the expanded panel is portaled to `<body>` and
   `position: fixed` under the chip (right-aligned) — never clipped by the
   session header or scroll containers, re-anchored on scroll/resize, and
-  elevated above all content (`z-index 1000`, layered floating shadow).
-  `react-dom` was added as a devDependency (externalized at build time;
-  resolves through the platform module table at runtime).
+  elevated above all content. The surface is liquid: translucent glass
+  (`backdrop-filter` blur), organic meniscus border-radius, and a top
+  sheen; a 420 ms droplet settle-in (radius/blur morph) leads into a
+  perpetual 5.5 s micro-float, and the exit is a 230 ms droplet-drain back
+  toward the chip. `prefers-reduced-motion` is respected. `react-dom` was
+  added as a devDependency (externalized at build time; resolves through
+  the platform module table at runtime).
 - **Recent-task list** in the expanded panel: the host's persisted ring
   (`/api/task-capsule/history`) with a one-line stats summary
   (today / week / success rate / average duration). Rows open the source

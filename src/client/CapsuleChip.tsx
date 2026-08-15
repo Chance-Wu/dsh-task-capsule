@@ -47,7 +47,7 @@ const DEFAULT_KEEP_MS = 8000
 const AUTO_COLLAPSE_MS = 1500
 
 /** The panel's exit-animation length (must match .popoverClosing's transition). */
-const CLOSE_ANIM_MS = 150
+const CLOSE_ANIM_MS = 240
 
 /** Max characters of the task name shown in the compact chip (both ends kept). */
 const CHIP_NAME_MAX = 20
@@ -348,18 +348,20 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
               className={open ? css.popover : css.popoverClosing}
               style={{ top: pos.top, right: pos.right, maxHeight: pos.maxHeight }}
             >
-              <CapsulePanel
-                snap={snap}
-                capsule={capsule}
-                status={status}
-                now={now}
-                settings={settings}
-                goal={goal}
-                accent={accent}
-                titleOf={titleOf}
-                onClose={closePanel}
-                t={t}
-              />
+              <div className={css.liquidFloat}>
+                <CapsulePanel
+                  snap={snap}
+                  capsule={capsule}
+                  status={status}
+                  now={now}
+                  settings={settings}
+                  goal={goal}
+                  accent={accent}
+                  titleOf={titleOf}
+                  onClose={closePanel}
+                  t={t}
+                />
+              </div>
             </div>,
             document.body,
           )
