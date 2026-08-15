@@ -85,6 +85,19 @@ describe('applyFold — timing and outcome', () => {
     expect(state.capsule.todos).toEqual([{ content: 'a', status: 'completed', startedAt: 200, completedAt: 300 }])
   })
 
+  it('counts turns per task and resets on a direct prompt (P0-4)', () => {
+    let state = initialFold()
+    state = applyFold(state, directPrompt(100))
+    state = applyFold(state, turnStart(110))
+    state = applyFold(state, turnStart(120))
+    expect(state.capsule.turnCount).toBe(2)
+    // A new task resets the turn count with the rest of the per-task facts.
+    state = applyFold(state, directPrompt(200))
+    expect(state.capsule.turnCount).toBeUndefined()
+    state = applyFold(state, turnStart(210))
+    expect(state.capsule.turnCount).toBe(1)
+  })
+
   it('prunes items that leave the list', () => {
     let state = initialFold()
     state = applyFold(state, todoWrite(100, [{ content: 'a', status: 'in_progress' }]))

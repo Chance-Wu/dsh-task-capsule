@@ -7,7 +7,7 @@
  * @module dsh-task-capsule/client/api
  */
 
-import type { CapsuleSettings, HistoryEntry } from '../types/capsule.ts'
+import type { CapsuleSettings, HistoryEntry, ParentSummary } from '../types/capsule.ts'
 
 /** Wire shape of the settings response. */
 export interface SettingsResponse {
@@ -19,11 +19,17 @@ export interface HistoryResponse {
   entries: HistoryEntry[]
 }
 
+/** Wire shape of the parent-summary response (P0-1). */
+export interface ParentResponse {
+  summary: ParentSummary
+}
+
 /** The tiny API surface the browser half consumes. */
 export interface TaskCapsuleApi {
   settings(): Promise<CapsuleSettings>
   update(patch: Partial<CapsuleSettings>): Promise<CapsuleSettings>
   history(): Promise<HistoryEntry[]>
+  parent(sessionId: string): Promise<ParentSummary>
 }
 
 export function apiOf(): TaskCapsuleApi {
@@ -31,6 +37,8 @@ export function apiOf(): TaskCapsuleApi {
     settings: () => getJson('/api/task-capsule/settings').then(body => (body as SettingsResponse).settings),
     update: patch => putJson('/api/task-capsule/settings', patch).then(body => (body as SettingsResponse).settings),
     history: () => getJson('/api/task-capsule/history').then(body => (body as HistoryResponse).entries),
+    parent: sessionId => getJson(`/api/task-capsule/parent?sessionId=${encodeURIComponent(sessionId)}`)
+      .then(body => (body as ParentResponse).summary),
   }
 }
 

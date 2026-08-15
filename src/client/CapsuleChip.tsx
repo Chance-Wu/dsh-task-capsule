@@ -15,7 +15,7 @@
  * @module dsh-task-capsule/client/CapsuleChip
  */
 
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ConversationSnapshot, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
@@ -154,13 +154,15 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
     }
   }, [visible, open])
 
-  // Close with the exit animation: toggle the closing class, then unmount.
+  // Close with the exit animation: toggle the closing class, then unmount
+  // and hand focus back to the chip (P1-6).
   const closePanel = (): void => {
     if (!open || closing) return
     setClosing(true)
     window.setTimeout(() => {
       setOpen(false)
       setClosing(false)
+      triggerRef.current?.focus()
     }, CLOSE_ANIM_MS)
   }
 
@@ -216,26 +218,45 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
   }, [open])
 
   // Anchor the floating panel under the chip (right-aligned), re-measured on
-  // scroll/resize so it never detaches from the chip while open.
+  // scroll/resize and on panel-content growth (ResizeObserver). P1-5: when
+  // the space below the chip cannot fit the panel, it flips above instead —
+  // the caret data-flip attribute points the arrow back at the chip.
+  const flipRef = useRef(false)
   useLayoutEffect(() => {
     if (!open && !closing) return
     const anchor = (): void => {
       const rect = triggerRef.current?.getBoundingClientRect()
       if (rect === undefined) return
-      const top = rect.bottom + 6
       const right = Math.max(8, window.innerWidth - rect.right)
+      const gap = 6
+      const spaceBelow = window.innerHeight - (rect.bottom + gap) - 8
+      const spaceAbove = rect.top - gap - 8
+      const height = panelRef.current?.offsetHeight ?? 320
+      // Flip above only when below is genuinely too small and above is bigger.
+      const flip = spaceBelow < 220 && spaceAbove > spaceBelow
+      flipRef.current = flip
+      const top = flip
+        ? Math.max(8, rect.top - height - gap)
+        : rect.bottom + gap
       setPos({
         top,
         right,
-        maxHeight: Math.max(120, window.innerHeight - top - 8),
+        maxHeight: Math.max(120, (flip ? spaceAbove : spaceBelow) + 8),
       })
     }
     anchor()
     window.addEventListener('resize', anchor)
     document.addEventListener('scroll', anchor, true)
+    const panel = panelRef.current
+    let observer: ResizeObserver | undefined
+    if (panel !== null && typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(anchor)
+      observer.observe(panel)
+    }
     return () => {
       window.removeEventListener('resize', anchor)
       document.removeEventListener('scroll', anchor, true)
+      observer?.disconnect()
     }
   }, [open, closing])
 
@@ -266,6 +287,40 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
     return () => { document.removeEventListener('keydown', onKey) }
   }, [open, closing])
 
+  // P1-6: move focus into the floating panel when it opens; the chip click
+  // restore happens on close (below).
+  useLayoutEffect(() => {
+    if (!open) return
+    panelRef.current?.focus()
+  }, [open])
+
+  // P1-6: announce status changes for assistive tech (polite live region).
+  const [liveStatus, setLiveStatus] = useState('')
+  useEffect(() => {
+    setLiveStatus(t(STATUS_KEYS[status]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status])
+
+  // P1-6: trap Tab inside the floating panel while it is open.
+  const onPanelKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
+    if (event.key !== 'Tab' || !open) return
+    const panel = panelRef.current
+    if (panel === null) return
+    const focusables = [...panel.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )]
+    if (focusables.length === 0) return
+    const first = focusables[0]!
+    const last = focusables[focusables.length - 1]!
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
   if (!visible) return null
 
   const titleOf = (id: string): string => byId[id as SessionId]?.displayTitle ?? id
@@ -291,17 +346,23 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
   const hasPlan = todos.length > 0
   const countsText = t('chip.counts', counts)
   const doneSummary = hasPlan ? progressLabel(counts.done, todos.length) : ''
+  // P0-4: a plan-less run still shows its progress — the completed turn count.
+  const turnSummary = (capsule?.turnCount ?? 0) > 0 ? t('chip.turns', { count: capsule?.turnCount }) : ''
   const labelText = terminal
     ? hasPlan
       ? `${t(STATUS_KEYS[status])} ${doneSummary}`
-      : t(STATUS_KEYS[status])
+      : turnSummary !== ''
+        ? `${t(STATUS_KEYS[status])} ${turnSummary}`
+        : t(STATUS_KEYS[status])
     : hasPlan
       ? countsText
       : clipLong(t('chip.sessionTask'), CHIP_NAME_MAX)
   const fullLabel = terminal
     ? hasPlan
       ? `${t(STATUS_KEYS[status])} ${doneSummary}`
-      : t(STATUS_KEYS[status])
+      : turnSummary !== ''
+        ? `${t(STATUS_KEYS[status])} ${turnSummary}`
+        : t(STATUS_KEYS[status])
     : hasPlan
       ? countsText
       : t('chip.sessionTask')
@@ -338,6 +399,8 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
         <span className={css.chipLabel}>{labelText}</span>
         <span className={css.chipTime} aria-hidden>{durationText}</span>
       </button>
+      {/* P1-6: polite live region announcing status changes. */}
+      <span className={css.srOnly} role="status" aria-live="polite">{liveStatus}</span>
       {open || closing
         ? pos !== null
           ? createPortal(
@@ -347,6 +410,9 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
               aria-label={t('panel.title')}
               className={open ? css.popover : css.popoverClosing}
               style={{ top: pos.top, right: pos.right, maxHeight: pos.maxHeight }}
+              data-flip={flipRef.current ? 'true' : 'false'}
+              tabIndex={-1}
+              onKeyDown={onPanelKeyDown}
             >
               <div className={css.liquidFloat}>
                 <CapsulePanel

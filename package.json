@@ -1,6 +1,6 @@
 {
   "name": "dsh-task-capsule",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "DeepSeek Harness task capsule — an always-visible, expandable status pill for the running task",
   "packageManager": "pnpm@11.7.0",
   "type": "module",

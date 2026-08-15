@@ -4,6 +4,38 @@ All notable changes to **dsh-task-capsule** are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 follow [SemVer](https://semver.org/).
 
+## [0.3.0] — 2026-08-15
+
+### Added
+
+- **P0-1 subagent aggregation**: the panel shows the parent session's
+  delegated work — `◈ 子代理 N · 已完成x 进行中y 待处理z · f 文件` — folded
+  host-side (children registered via `header.parentSession` +
+  `delegationDepth`) and served over `GET /api/task-capsule/parent`.
+- **P0-2 retry chain**: new history entries link back to the same session's
+  latest failed attempt (`retriedFrom`); the recent list shows a
+  「重试 N 次」 badge computed from the ring.
+- **P0-3 frame telemetry**: taskCapsule projection frames are counted per
+  session (via `sessionProjections.onChanged`), reset on each direct prompt,
+  archived as `frames` in the history entry and shown in the row tooltip.
+- **P0-4 turn count**: the fold counts turns per task; a plan-less finished
+  run reads `✓ 任务完成 · 5 回合 · 02:31`.
+- **P1-5 panel flip**: the floating panel flips above the chip when the
+  space below is too small (ResizeObserver re-anchors on content growth),
+  with a caret pointing back at the chip.
+- **P1-6 focus management**: focus moves into the panel on open, Tab traps
+  inside it, focus returns to the chip on close, and status changes are
+  announced via a polite `aria-live` region.
+- **P1-7/P1-8/P1-9 task list**: the active item flashes on switch; completed
+  items group under a collapsed toggle; each item shows a thin duration bar
+  relative to the longest item.
+
+### Changed
+
+- Subagent child folds are retained (not dropped on idle) so the parent's
+  aggregation can read the current delegated work; child sessions still
+  produce no history entries of their own.
+
 ## [0.2.0] — 2026-08-15
 
 ### Added

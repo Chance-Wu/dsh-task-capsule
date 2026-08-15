@@ -24,6 +24,7 @@ const MAX_BODY_BYTES = 16 * 1024
 type Parsed =
   | { kind: 'history' }
   | { kind: 'settings' }
+  | { kind: 'parent' }
   | { kind: 'not-found' }
 
 /** Parse a task-capsule pathname into a {@link Parsed} route. */
@@ -31,6 +32,7 @@ export function parsePath(pathname: string): Parsed {
   const rest = pathname.startsWith(PREFIX) ? pathname.slice(PREFIX.length) : pathname
   if (rest === '/history' || rest === '/history/') return { kind: 'history' }
   if (rest === '/settings' || rest === '/settings/') return { kind: 'settings' }
+  if (rest === '/parent' || rest === '/parent/') return { kind: 'parent' }
   return { kind: 'not-found' }
 }
 
@@ -63,6 +65,17 @@ async function handle(req: IncomingMessage, res: ServerResponse, ctx: Context): 
         return sendJson(res, 405, { error: 'method not allowed (expected GET)' })
       }
       return sendJson(res, 200, { entries: ctx.taskCapsuleHistory.list() })
+    }
+    if (parsed.kind === 'parent') {
+      // P0-1: aggregated subagent work of one parent session.
+      if (method !== 'GET') {
+        return sendJson(res, 405, { error: 'method not allowed (expected GET)' })
+      }
+      const sessionId = url.searchParams.get('sessionId')
+      if (typeof sessionId !== 'string' || sessionId.length === 0) {
+        return sendJson(res, 400, { error: 'missing sessionId query parameter' })
+      }
+      return sendJson(res, 200, { summary: ctx.taskCapsuleHistory.parentSummary(sessionId) })
     }
     // settings serves GET (read) and PUT (update).
     if (method === 'GET') {

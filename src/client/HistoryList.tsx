@@ -68,12 +68,20 @@ export function HistoryList({ t }: HistoryListProps) {
       <ul className={css.recentList}>
         {entries.map(entry => {
           const failed = entry.status !== 'success'
+          // P0-2: how many later attempts the ring holds for this session —
+          // the retry chain count on the failed entry.
+          const retryCount = failed
+            ? entries.filter(candidate =>
+              candidate.sessionId === entry.sessionId && candidate.startedAt > entry.startedAt).length
+            : 0
+          // P0-3: the archived frame count rides the row tooltip (debug aid).
+          const frameNote = entry.frames !== undefined && entry.frames > 0 ? ` · ${entry.frames} 帧` : ''
           return (
             <li key={`${entry.sessionId}-${entry.startedAt}`} className={css.recentItem} data-status={entry.status}>
               <button
                 type="button"
                 className={css.recentMain}
-                title={t('panel.open')}
+                title={`${t('panel.open')}${frameNote}`}
                 onClick={() => openSession(entry.sessionId)}
               >
                 <span className={css.recentStatus}>{t(STATUS_KEYS[HISTORY_STATUS_KEY[entry.status]])}</span>
@@ -82,6 +90,9 @@ export function HistoryList({ t }: HistoryListProps) {
               </button>
               {failed && entry.error !== undefined ? (
                 <span className={css.recentError} title={entry.error}>{entry.error}</span>
+              ) : null}
+              {retryCount > 0 ? (
+                <span className={css.recentRetried} title={t('panel.open')}>{t('history.retried', { count: retryCount })}</span>
               ) : null}
               {failed ? (
                 <button

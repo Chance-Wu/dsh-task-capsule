@@ -61,7 +61,15 @@ export function applyFold(state: CapsuleFoldState, event: SessionEvent): Capsule
   switch (event.type) {
     case 'turn/start': {
       const startedAt = capsule.startedAt ?? event.time
-      return { ...state, capsule: { ...capsule, startedAt, lastActivityAt: event.time } }
+      return {
+        ...state,
+        capsule: {
+          ...capsule,
+          startedAt,
+          turnCount: (capsule.turnCount ?? 0) + 1,
+          lastActivityAt: event.time,
+        },
+      }
     }
     case 'turn/end': {
       const reason = event.data.reason.kind
@@ -117,6 +125,7 @@ const capsuleSchema = zod.object({
   startedAt: zod.number().optional(),
   lastActivityAt: zod.number().optional(),
   lastTurnEndReason: zod.string().optional(),
+  turnCount: zod.number().optional(),
   goalPhase: zod.union([
     zod.literal('active'), zod.literal('paused'), zod.literal('blocked'), zod.literal('complete'),
   ]).optional(),

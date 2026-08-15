@@ -779,3 +779,150 @@
   font-size: 10px;
   line-height: 14px;
 }
+
+/* ---- P1-5: flip caret (panel below the chip by default, above when flipped) ---- */
+
+.popover::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  right: 22px;
+  border: 7px solid transparent;
+  border-bottom-color: color-mix(in srgb, var(--dsw-specific-menu) 94%, transparent);
+}
+
+.popover[data-flip='true']::before {
+  top: auto;
+  bottom: -7px;
+  border-bottom-color: transparent;
+  border-top-color: color-mix(in srgb, var(--dsw-specific-menu) 94%, transparent);
+}
+
+/* ---- P1-6: screen-reader-only live region ---- */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- P0-1: subagent aggregate line ---- */
+
+.subagents {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-tertiary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.subagents::before {
+  content: '◈ ';
+  color: var(--dsw-alias-state-business-primary);
+}
+
+/* ---- P1-8: completed group toggle ---- */
+
+.treeGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.treeGroupToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.treeGroupToggle:hover,
+.treeGroupToggle:focus-visible {
+  background: var(--dsw-alias-fill-l1);
+  color: var(--dsw-alias-label-secondary);
+}
+
+.treeGroupLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ---- P1-9: per-item duration bar ---- */
+
+.treeBar {
+  flex-basis: 100%;
+  box-sizing: border-box;
+  height: 2px;
+  margin: 0 0 2px 22px;
+  overflow: hidden;
+  border-radius: 1px;
+  background: var(--dsw-alias-fill-l1);
+}
+
+.treeBarFill {
+  display: block;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--dsh-capsule-accent, var(--dsw-alias-state-business-primary));
+  opacity: 0.45;
+  transition: width 200ms ease;
+}
+
+/* ---- P1-7: active-switch flash ---- */
+
+.treeItemFlash {
+  animation: dsh-tree-flash 700ms ease-out;
+}
+
+@keyframes dsh-tree-flash {
+  0% {
+    background: var(--dsw-alias-fill-l2);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .treeItemFlash {
+    animation: none;
+  }
+  .treeBarFill {
+    transition: none;
+  }
+}
+
+/* ---- P0-2: retried badge on the recent list ---- */
+
+.recentRetried {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--dsw-alias-fill-l1);
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+  line-height: 14px;
+  white-space: nowrap;
+}

@@ -7,10 +7,11 @@
  * @module dsh-task-capsule/client/CapsulePanel
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
-import type { CapsuleAccent, CapsuleSettings, CapsuleState, CapsuleStatus } from '../types/capsule.ts'
+import type { CapsuleAccent, CapsuleSettings, CapsuleState, CapsuleStatus, ParentSummary } from '../types/capsule.ts'
+import { apiOf } from './api.ts'
 import { NS, STATUS_KEYS } from './locales.ts'
 import { durationLabel, formatDuration } from './format.ts'
 import { waitingReason } from './status.ts'
@@ -130,12 +131,15 @@ export function CapsulePanel({ snap, capsule, status, now, settings, goal, accen
         </div>
       ) : null}
 
+      <SubagentSummary sessionId={snap.sessionId} activity={capsule?.lastActivityAt} t={t} />
+
       <TaskTree
         items={todos}
         now={now}
         runningCalls={snap.runningCalls}
         showDuration={settings?.showDuration ?? true}
         showCurrentOp={settings?.showCurrentOp ?? true}
+        t={t}
       />
 
       {failed && errorText !== null ? (
@@ -149,6 +153,41 @@ export function CapsulePanel({ snap, capsule, status, now, settings, goal, accen
       ) : null}
 
       <HistoryList t={t} />
+    </div>
+  )
+}
+
+/**
+ * P0-1: the parent session's subagent work, aggregated host-side and read
+ * over REST. Refetches when the parent's activity advances (turn-level).
+ * Renders nothing when the session has no subagents.
+ */
+function SubagentSummary({ sessionId, activity, t }: {
+  sessionId: string
+  activity: number | undefined
+  t: TranslateNS<typeof NS>
+}): JSX.Element | null {
+  const [summary, setSummary] = useState<ParentSummary | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    apiOf().parent(sessionId)
+      .then(value => { if (alive) setSummary(value) })
+      .catch(() => { /* no subagents / resource missing: stay hidden */ })
+    return () => { alive = false }
+  }, [sessionId, activity])
+
+  if (summary === null || summary.children.length === 0) return null
+  const totals = summary.totals
+  return (
+    <div className={css.subagents} title={`${summary.children.length} 个子代理`}>
+      {t('panel.subagents', {
+        count: summary.children.length,
+        done: totals.done,
+        active: totals.active,
+        pending: totals.pending,
+        files: totals.files,
+      })}
     </div>
   )
 }

@@ -72,6 +72,8 @@ export interface CapsuleState {
   lastTurnEndReason?: string
   /** goal phase when the goal plugin is composed (absent without it). */
   goalPhase?: 'active' | 'paused' | 'blocked' | 'complete'
+  /** Turns completed within the current task (P0-4: plan-less runs still show progress). */
+  turnCount?: number
   files: CapsuleFiles
 }
 
@@ -92,6 +94,27 @@ export interface HistoryEntry {
   files: CapsuleFiles
   /** Turn/end reason when the task did not end cleanly (failure detail). */
   error?: string
+  /** taskCapsule projection frames observed during the task (P0-3). */
+  frames?: number
+  /** Identity of the failed task this entry retried (P0-2), `sessionId:startedAt`. */
+  retriedFrom?: string
+}
+
+/** One subagent child's current-task summary inside a parent session (P0-1). */
+export interface ChildSummary {
+  sessionId: string
+  done: number
+  active: number
+  pending: number
+  files: number
+  additions: number
+  deletions: number
+}
+
+/** Aggregated subagent work of one parent session (P0-1), served over REST. */
+export interface ParentSummary {
+  children: ChildSummary[]
+  totals: { done: number; active: number; pending: number; files: number; additions: number; deletions: number }
 }
 
 /** Panel density: comfortable default, compact for dense surfaces. */

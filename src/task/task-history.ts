@@ -1,14 +1,26 @@
 /**
- * Recent-task history (design §12): a ring of finished tasks persisted to
- * `$DSH_HOME/task-capsule-history.json`, fed by the agent lifecycle.
+ * Recent-task history (design §12) + subagent aggregation + frame telemetry:
+ * a ring of finished tasks persisted to `$DSH_HOME/task-capsule-history.json`,
+ * fed by the agent lifecycle. Every committed session event is folded into
+ * the session's capsule (the same pure reducer the projection uses), and
+ * each agent running → idle transition finalizes the open task into a
+ * {@link HistoryEntry}.
  *
- * Every committed session event is folded into the session's capsule (the
- * same pure reducer the projection uses), and each agent running → idle
- * transition finalizes the open task into a {@link HistoryEntry}. The ring
- * is capped by the settings `historyLimit` (trimmed lazily on read so a
- * limit change takes effect without another push). Loads and writes are
- * best-effort: a missing or corrupt file silently falls back to an empty
- * ring, and a failed write only logs a warning.
+ * Beyond the ring, the service is the host-side owner of two facts the
+ * per-session projection cannot express:
+ * - **subagent aggregation (P0-1)**: child sessions (`delegationDepth > 0`
+ *   with a `parentSession`) are registered under their parent, and
+ *   `parentSummary()` folds their current-task capsule facts into one
+ *   {@link ParentSummary} served over REST — the panel shows the whole
+ *   delegation tree's progress.
+ * - **frame telemetry (P0-3)**: taskCapsule projection frames are counted
+ *   per session through the registry's `onChanged`, reset on each direct
+ *   prompt, and archived in the history entry (`frames`).
+ *
+ * The ring is capped by the settings `historyLimit` (trimmed lazily on read
+ * so a limit change takes effect without another push). Loads and writes
+ * are best-effort: a missing or corrupt file silently falls back to an
+ * empty ring, and a failed write only logs a warning.
  * @module dsh-task-capsule/task/task-history
  */
 
@@ -18,8 +30,9 @@ import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 // Type-only: pulls the `session/event` and `agent/status` Events merges.
 import type {} from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-agent'
-import type { CapsuleFiles, HistoryEntry, HistoryStatus } from '../types/capsule.ts'
+import type { CapsuleFiles, CapsuleState, ChildSummary, HistoryEntry, HistoryStatus, ParentSummary } from '../types/capsule.ts'
 import { historyStatusOf } from '../harness/task-mapper.ts'
+import { isDirectPrompt } from '../harness/event-parser.ts'
 import type { CapsuleFoldState } from '../harness/adapter.ts'
 import { TaskManager } from './task-manager.ts'
 import type { SettingsService } from './task-state.ts'
@@ -36,6 +49,58 @@ const HISTORY_FILE = 'task-capsule-history.json'
 
 /** The closed history-status set (wire values only; corrupt entries drop). */
 const HISTORY_STATUSES: readonly HistoryStatus[] = ['success', 'failed', 'aborted', 'interrupted']
+
+/** Identity of one history entry, stable across ring churn (P0-2). */
+function entryId(entry: { sessionId: string; startedAt: number }): string {
+  return `${entry.sessionId}:${entry.startedAt}`
+}
+
+/**
+ * P0-2: the retry link for a freshly finished entry — the latest archived
+ * non-success entry of the SAME session, when there is one (best-effort:
+ * the ring may already have evicted the original failure).
+ */
+export function retryLinkFor(entries: readonly HistoryEntry[], entry: { sessionId: string }): string | undefined {
+  const prior = entries.find(candidate =>
+    candidate.sessionId === entry.sessionId && candidate.status !== 'success')
+  return prior !== undefined ? entryId(prior) : undefined
+}
+
+/**
+ * P0-1: fold subagent child capsules into one parent summary (pure, so the
+ * aggregation is unit-testable without a live cordis context).
+ */
+export function aggregateChildren(
+  children: ReadonlyArray<{ sessionId: string; capsule: CapsuleState }>,
+): ParentSummary {
+  const out: ChildSummary[] = []
+  const totals = { done: 0, active: 0, pending: 0, files: 0, additions: 0, deletions: 0 }
+  for (const child of children) {
+    const { todos, files } = child.capsule
+    let done = 0
+    let active = 0
+    for (const todo of todos) {
+      if (todo.status === 'completed') done += 1
+      else if (todo.status === 'in_progress') active += 1
+    }
+    out.push({
+      sessionId: child.sessionId,
+      done,
+      active,
+      pending: todos.length - done - active,
+      files: files.paths.length,
+      additions: files.additions,
+      deletions: files.deletions,
+    })
+    totals.done += done
+    totals.active += active
+    totals.pending += todos.length - done - active
+    totals.files += files.paths.length
+    totals.additions += files.additions
+    totals.deletions += files.deletions
+  }
+  return { children: out, totals }
+}
 
 /**
  * Validate an untrusted (persisted or hand-edited) history payload into a
@@ -66,6 +131,10 @@ export function sanitizeHistory(input: unknown, limit: number): HistoryEntry[] {
     if (files === undefined) continue
     const error = entry.error
     if (error !== undefined && typeof error !== 'string') continue
+    const frames = entry.frames
+    if (frames !== undefined && (typeof frames !== 'number' || !Number.isFinite(frames))) continue
+    const retriedFrom = entry.retriedFrom
+    if (retriedFrom !== undefined && typeof retriedFrom !== 'string') continue
     out.push({
       sessionId: entry.sessionId,
       status: status as HistoryStatus,
@@ -76,6 +145,8 @@ export function sanitizeHistory(input: unknown, limit: number): HistoryEntry[] {
       totalTodos,
       files,
       ...(error !== undefined ? { error } : {}),
+      ...(frames !== undefined ? { frames } : {}),
+      ...(retriedFrom !== undefined ? { retriedFrom } : {}),
     })
   }
   return out.length > limit ? out.slice(0, limit) : out
@@ -98,30 +169,59 @@ export class TaskHistoryService extends Service {
   private readonly folds = new TaskManager()
   /** Sessions with an open (running) task; idle transitions finalize them. */
   private readonly open = new Set<string>()
+  /** Parent session → its subagent child session ids (P0-1). */
+  private readonly childrenByParent = new Map<string, Set<string>>()
+  /** Session → taskCapsule frames observed since the last direct prompt (P0-3). */
+  private readonly frames = new Map<string, number>()
 
   constructor(ctx: Context, private readonly settings: SettingsService) {
     super(ctx, 'taskCapsuleHistory')
-    // Fold the session log into each session's capsule.
+    // Fold the session log into each session's capsule, register subagent
+    // children under their parent, and reset frame counts on task starts.
     this.ctx.on('session/event', (session, event) => {
       this.folds.observe(session.id, event)
+      const header = session.header
+      const depth = header.delegationDepth ?? 0
+      const parent = header.parentSession
+      if (depth > 0 && parent !== undefined) {
+        let children = this.childrenByParent.get(parent)
+        if (children === undefined) {
+          children = new Set()
+          this.childrenByParent.set(parent, children)
+        }
+        children.add(session.id)
+      }
+      if (isDirectPrompt(event)) {
+        this.frames.set(session.id, 0)
+      }
     })
+    // Frame telemetry (P0-3): count taskCapsule projection updates per
+    // session. The seam may be absent (headless) — guard and dispose.
+    const projections = this.ctx.get('sessionProjections') as
+      | { onChanged(listener: (session: { id: string }, key: string) => void): () => void }
+      | undefined
+    if (projections !== undefined) {
+      this.ctx.effect(() => projections.onChanged((session, key) => {
+        if (key !== 'taskCapsule') return
+        this.frames.set(session.id, (this.frames.get(session.id) ?? 0) + 1)
+      }), 'task-capsule: frame telemetry')
+    }
     // The lifecycle drives task boundaries: a running → idle transition
     // closes the open task (a later direct prompt opens the next one).
+    // Subagent children fold no entry of their own — the ring lists
+    // user-facing tasks — but their folds are KEPT so the parent's
+    // aggregation can read the current delegated work.
     this.ctx.on('agent/status', ({ agent, status }) => {
       const sessionId = agent.session.id
-      // Subagent children fold no entry of their own: the ring lists
-      // user-facing tasks, and child work rides the parent's own task.
-      // (Folding child todo counts into the parent's capsule projection is
-      // out of scope — projections are per-session by framework design.)
       const subagent = (agent.session.header.delegationDepth ?? 0) > 0
       if (status === 'running' && !subagent) {
         this.open.add(sessionId)
       } else if (status === 'idle' && this.open.delete(sessionId)) {
         const fold = this.folds.current(sessionId)
-        if (fold !== undefined) this.push(finalize(sessionId, fold, Date.now()))
-        this.folds.drop(sessionId)
-      } else if (status === 'idle' && subagent) {
-        this.folds.drop(sessionId)
+        if (fold !== undefined) {
+          const entry = finalize(sessionId, fold, Date.now(), { frames: this.frames.get(sessionId) })
+          this.push(entry)
+        }
       }
     })
     // Restore the persisted ring (best-effort; the default stands on error).
@@ -135,7 +235,28 @@ export class TaskHistoryService extends Service {
     return this.entries
   }
 
+  /**
+   * Aggregated current-task facts of every subagent child (P0-1). Children
+   * with no fold yet (never observed) are omitted; an empty `children`
+   * array means the session has no subagents.
+   */
+  parentSummary(parentSessionId: string): ParentSummary {
+    const children: Array<{ sessionId: string; capsule: CapsuleState }> = []
+    for (const childId of this.childrenByParent.get(parentSessionId) ?? []) {
+      const capsule = this.folds.current(childId)?.capsule
+      if (capsule === undefined) continue
+      children.push({ sessionId: childId, capsule })
+    }
+    return aggregateChildren(children)
+  }
+
   private push(entry: HistoryEntry): void {
+    // P0-2: a new entry for a session whose latest archived attempt failed
+    // is a retry — link it back so the list can show the chain.
+    if (entry.retriedFrom === undefined) {
+      const link = retryLinkFor(this.entries, entry)
+      if (link !== undefined) entry.retriedFrom = link
+    }
     this.entries.unshift(entry)
     const cap = this.settings.get().historyLimit
     if (this.entries.length > cap) this.entries.length = cap
@@ -166,7 +287,12 @@ export class TaskHistoryService extends Service {
  * moment the agent went idle). Extracted pure so tests can finalize without
  * a live cordis context.
  */
-export function finalize(sessionId: string, fold: CapsuleFoldState, finishedAt: number): HistoryEntry {
+export function finalize(
+  sessionId: string,
+  fold: CapsuleFoldState,
+  finishedAt: number,
+  extras: { frames?: number } = {},
+): HistoryEntry {
   const capsule = fold.capsule
   const startedAt = capsule.startedAt ?? finishedAt
   const totalTodos = capsule.todos.length
@@ -186,5 +312,6 @@ export function finalize(sessionId: string, fold: CapsuleFoldState, finishedAt: 
     totalTodos,
     files: capsule.files,
     ...(error !== undefined ? { error } : {}),
+    ...(extras.frames !== undefined ? { frames: extras.frames } : {}),
   }
 }

@@ -8,8 +8,9 @@
 import { describe, expect, it } from 'vitest'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { applyFold, initialFold } from '../harness/adapter.ts'
-import { finalize, sanitizeHistory } from './task-history.ts'
+import { aggregateChildren, finalize, retryLinkFor, sanitizeHistory } from './task-history.ts'
 import { sanitizeSettings } from './task-state.ts'
+import type { CapsuleState } from '../types/capsule.ts'
 
 let seq = 0
 
@@ -136,5 +137,64 @@ describe('sanitizeHistory', () => {
     expect(sanitizeHistory(null, 5)).toEqual([])
     expect(sanitizeHistory({}, 5)).toEqual([])
     expect(sanitizeHistory([{ ...valid, files: undefined }], 5)).toEqual([])
+  })
+
+  it('keeps the optional frames and retriedFrom fields when well-typed', () => {
+    const entry = { ...valid, frames: 42, retriedFrom: 's0:1' }
+    expect(sanitizeHistory([entry], 5)).toEqual([entry])
+    // Malformed optional fields drop the row (same rule as `error`).
+    expect(sanitizeHistory([{ ...valid, frames: 'many' }], 5)).toEqual([])
+    expect(sanitizeHistory([{ ...valid, retriedFrom: 7 }], 5)).toEqual([])
+  })
+})
+
+describe('finalize — frame telemetry (P0-3)', () => {
+  it('archives the frame count when provided', () => {
+    const entry = finalize('s1', initialFold(), 100, { frames: 17 })
+    expect(entry.frames).toBe(17)
+    expect(finalize('s1', initialFold(), 100).frames).toBeUndefined()
+  })
+})
+
+describe('retryLinkFor (P0-2)', () => {
+  const entry = (sessionId: string, startedAt: number, status: 'success' | 'failed') => ({
+    sessionId, status, startedAt, finishedAt: startedAt + 10, durationMs: 10,
+    completedTodos: 0, totalTodos: 0, files: { paths: [], additions: 0, deletions: 0 },
+  })
+
+  it('links a new entry to the latest failed attempt of the same session', () => {
+    const ring = [entry('s2', 300, 'success'), entry('s1', 200, 'failed'), entry('s1', 100, 'failed')]
+    expect(retryLinkFor(ring, { sessionId: 's1' })).toBe('s1:200')
+  })
+
+  it('returns nothing when no prior failure exists', () => {
+    expect(retryLinkFor([entry('s1', 100, 'success')], { sessionId: 's1' })).toBeUndefined()
+    expect(retryLinkFor([entry('s2', 100, 'failed')], { sessionId: 's1' })).toBeUndefined()
+  })
+})
+
+describe('aggregateChildren (P0-1)', () => {
+  const capsule = (todos: Array<{ status: string }>, files: CapsuleState['files']): CapsuleState =>
+    ({ todos: todos as never, files, startedAt: 1 })
+
+  it('sums todo counts and file stats across children', () => {
+    const summary = aggregateChildren([
+      { sessionId: 'c1', capsule: capsule(
+        [{ status: 'completed' }, { status: 'in_progress' }, { status: 'pending' }],
+        { paths: ['a.ts'], additions: 3, deletions: 1 },
+      ) },
+      { sessionId: 'c2', capsule: capsule(
+        [{ status: 'completed' }, { status: 'completed' }],
+        { paths: ['b.ts'], additions: 0, deletions: 2 },
+      ) },
+    ])
+
+    expect(summary.totals).toEqual({ done: 3, active: 1, pending: 1, files: 2, additions: 3, deletions: 3 })
+    expect(summary.children).toHaveLength(2)
+    expect(summary.children[1]).toMatchObject({ sessionId: 'c2', done: 2, active: 0, pending: 0 })
+  })
+
+  it('returns empty totals for no children', () => {
+    expect(aggregateChildren([]).totals).toEqual({ done: 0, active: 0, pending: 0, files: 0, additions: 0, deletions: 0 })
   })
 })
