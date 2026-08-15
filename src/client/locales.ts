@@ -37,6 +37,7 @@ export const zh = {
   'panel.error.view': '查看详情',
   'panel.error.detail': '错误详情',
   'chip.counts': '任务 已完成{done} 进行中{active} 待处理{pending}',
+  'chip.sessionTask': '会话任务处理',
 } as const
 
 /** English dictionary, key-identical to the Chinese source of truth. */
@@ -56,6 +57,7 @@ export const en: Record<TaskCapsuleKey, string> = {
   'panel.error.view': 'View details',
   'panel.error.detail': 'Error detail',
   'chip.counts': 'Task {done} done · {active} active · {pending} pending',
+  'chip.sessionTask': 'Task processing',
 }
 
 /** Key domain of the `taskCapsule` namespace (zh is the source of truth). */

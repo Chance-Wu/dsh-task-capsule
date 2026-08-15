@@ -3,7 +3,7 @@
  * `● 任务 已完成3 进行中1 待处理5 02:18` — expanding into the task panel.
  * The default surface carries the status point, the plan's per-status
  * counts (completed / in progress / pending), and the clock; sessions
- * without a todo plan fall back to the session title. A finished task
+ * without a todo plan show the fixed `会话任务处理` label. A finished task
  * shows the status word with its frozen duration (`✓ Task completed
  * 02:31`) and the panel auto-collapses shortly after completion — the
  * capsule is a status indicator, not a task browser.
@@ -177,10 +177,9 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
   // Status → task counts → time. Terminal states drop the counts for the
   // status word: `✓ Task completed 02:31`. Live states show the plan's
   // per-status counts (`任务 已完成3 进行中1 待处理5`); sessions without a
-  // todo plan keep the session title, middle-clipped (both ends kept — the
-  // tail carries the actionable detail). The full text rides the button's
+  // todo plan carry the fixed `会话任务处理` label (clipped both-ends for
+  // safety, a no-op on the short label). The full text rides the button's
   // title/aria for hover and screen readers.
-  const taskName = titleOf(sessionId)
   const todos = capsule?.todos ?? []
   const counts = todoCounts(todos)
   const hasPlan = todos.length > 0
@@ -189,12 +188,12 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
     ? `${t(STATUS_KEYS[status])} ${durationText}`
     : hasPlan
       ? `${countsText} ${durationText}`
-      : `${clipLong(taskName, CHIP_NAME_MAX)} ${durationText}`
+      : `${clipLong(t('chip.sessionTask'), CHIP_NAME_MAX)} ${durationText}`
   const chipFullText = terminal
     ? chipText
     : hasPlan
       ? `${countsText} ${durationText}`
-      : `${taskName} ${durationText}`
+      : `${t('chip.sessionTask')} ${durationText}`
 
   const chipClass = terminal ? `${css.chip} ${css.chipDone}` : css.chip
 
