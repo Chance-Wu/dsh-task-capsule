@@ -4,6 +4,108 @@ All notable changes to **dsh-task-capsule** are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 follow [SemVer](https://semver.org/).
 
+## [0.6.0] — 2026-08-16
+
+### Changed (UI polish)
+
+- **Disclosure arrows rotate** instead of swapping glyphs: the completed-task
+  group and the subagent breakdown use a single `▸` that turns 90° to point
+  down when open (160ms ease).
+- **Status rhythm distinguishes working from waiting**: the running dot pulses
+  faster (1.4s) with a slightly stronger halo, the waiting dot breathes
+  slowly (2.6s) — the two states now feel different at a glance. The task
+  tree's active-item dot follows the running rhythm.
+- **Panel header divider**: a hairline under the title row separates the
+  chrome from the content.
+- **Running status word picks up the accent color**, so "working" reads
+  without reading the text.
+- **Semantic settle states**: the current-task accent bar and the progress
+  fill both turn success-green once the plan is fully done (`data-done` /
+  `data-complete`), with a smooth 200/300ms transition.
+- **Recent-task rows get a leading status dot** (green success / red failure),
+  making the ring scannable at a glance.
+- **Chip press feedback**: `:active` yields the pill (scale 0.97) under the
+  cursor, on top of the hover lift.
+- **Settings page grouped** into Display / Behavior / Appearance / Debug
+  sections with captions and hairline separators, plus hover tint on rows
+  and a focus-visible background on the error toggle.
+- All new transitions are disabled under `prefers-reduced-motion`.
+
+## [0.5.0] — 2026-08-16
+
+### Added
+
+- **Plan-less current-operation line (functional gap)**: `showCurrentOp`
+  only worked when a todo plan existed — `TaskTree` renders nothing without
+  items. The live operation line is now a shared `CurrentOpLine` component
+  that the panel renders under the current-task row when there is no plan,
+  so plan-less runs finally say what the agent is doing (file / command).
+- **Failure retry (functional gap)**: the failed task's error block now
+  offers 「重试」beside `查看详情` — it re-queues a continuation prompt on
+  the same session, matching the recent-task list affordance. Retrying no
+  longer requires waiting for the task to land in history.
+- **Expandable subagent breakdown (functional gap)**: the subagent aggregate
+  row is now a disclosure toggle; expanding shows each child (display title,
+  `done/total`, file count) from the `children` payload the REST endpoint
+  already returned but the UI ignored.
+- **Subagent progress refresh (functional gap)**: the parent summary now
+  refreshes on a 5s cadence while children exist (subagent work advances
+  independently of the parent's own activity, so the old turn-level refetch
+  showed stale numbers); a session with no subagents still fetches once and
+  never polls.
+- **Localized retry prompt (functional gap)**: the retry continuation text
+  was hardcoded Chinese `继续`; it now rides the new `panel.retryPrompt`
+  locale key (`继续` / `Continue`).
+
+### Fixed
+
+- **Settings load race**: an edit issued right after startup could persist
+  defaults + patch and drop previously saved fields. `update()` now awaits
+  the persisted-file load before merging.
+- **Host-side state leak**: `session/disposed` now releases the session's
+  fold, frame count, open-task slot and subagent-parent registration, so
+  long-running hosts stop accumulating stale per-session entries.
+- **History file not trimmed on limit shrink**: `list()` now persists when a
+  read actually trims the ring, bringing the file in line with a lowered
+  `historyLimit`.
+
+## [0.4.0] — 2026-08-16
+
+### Fixed
+
+- **History recorded one entry per turn-gap**: every `agent/status: idle`
+  transition archived the open task, so a single multi-turn task polluted the
+  recent ring with partial `success` rows. An idle with more queued work
+  (`agent.inbox.hasPending`) or a blocked turn waiting on the user now keeps
+  the task open; only a genuinely finished task is archived — one entry per
+  task, matching the client's `turnGap` semantics.
+- **`keepAfterDoneMs` was never wired**: the setting, its schema and its
+  settings-panel control all existed, but the chip stayed visible forever
+  after a task finished. The settled capsule now hides after the configured
+  linger window (`0` = immediately), pinned by `alwaysVisible` or an open
+  panel. `DEFAULT_KEEP_MS` is used as the pre-settings fallback.
+- **Accent never reached the panel**: the portal panel renders in `<body>`,
+  outside the chip root, so `--dsh-capsule-accent` (progress fill, bars,
+  current-task bar) fell back to the default. The variable now rides the
+  portal shell.
+
+### Changed
+
+- UI polish: chip hover lift / open-state ring / quiet success·error tints,
+  breathing-dot halo, accent bar on the current-task row, gradient progress
+  fill, hover states on task and recent rows, error block tinted by the
+  semantic error color, settings toggles restyled as CSS switches, and
+  focus-visible outlines — all still token-driven and reduced-motion aware.
+
+### Removed
+
+- Dead code: the duplicated `isTerminal` (now shared from `status.ts`), the
+  unused `className` parameter of `StatusGlyph`, the dead `accent` prop and
+  `data-accent` attribute of `CapsulePanel`, four unreferenced locale keys
+  (`panel.currentOp`, `panel.error.detail`, `history.aborted`,
+  `history.interrupted`), a stale panel docstring, and the duplicated
+  label/full-label computation in `CapsuleChip`.
+
 ## [0.3.0] — 2026-08-15
 
 ### Added

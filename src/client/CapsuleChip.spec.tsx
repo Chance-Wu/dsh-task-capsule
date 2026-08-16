@@ -9,8 +9,8 @@
  * @module dsh-task-capsule/client/CapsuleChip.spec
  */
 
-import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import type { ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
 import type { CapsuleState, CapsuleStatus, TaskItem } from '../types/capsule.ts'
 import { CapsuleChip, type CapsuleChipProps } from './CapsuleChip.tsx'
@@ -18,7 +18,10 @@ import { zh } from './locales.ts'
 
 // vitest runs without framework globals here, so testing-library's automatic
 // cleanup never hooks; unmount between cases explicitly.
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
 /** Interpolating translator against the zh dictionary (source of truth). */
 function t(key: string, params?: Record<string, unknown>): string {
@@ -49,8 +52,8 @@ function capsule(overrides: Partial<CapsuleState> = {}): CapsuleState {
 
 const todo = (content: string, status: TaskItem['status']): TaskItem => ({ content, status })
 
-function renderChip(snapshot: ConversationSnapshot, value: CapsuleState | undefined): void {
-  const props = {
+function chipProps(snapshot: ConversationSnapshot, value: CapsuleState | undefined): CapsuleChipProps {
+  return {
     sessionId: 's1',
     useSession: (selector: (s: ConversationSnapshot) => unknown) => selector(snapshot),
     useProjection: (key: string) => (key === 'taskCapsule' ? value : undefined),
@@ -58,7 +61,10 @@ function renderChip(snapshot: ConversationSnapshot, value: CapsuleState | undefi
       selector({ byId: {} }),
     t: t as never,
   } as unknown as CapsuleChipProps
-  render(<CapsuleChip {...props} />)
+}
+
+function renderChip(snapshot: ConversationSnapshot, value: CapsuleState | undefined) {
+  return render(<CapsuleChip {...chipProps(snapshot, value)} />)
 }
 
 describe('CapsuleChip compact title', () => {
@@ -95,6 +101,25 @@ describe('CapsuleChip compact title', () => {
 
   it('hides when idle with no activity unless alwaysVisible is set', () => {
     renderChip(snap({}), capsule({}))
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('hides the settled capsule after keepAfterDoneMs elapses', () => {
+    vi.useFakeTimers()
+    const done = capsule({
+      startedAt: 1000,
+      lastTurnEndReason: 'completed',
+      todos: [todo('a', 'completed'), todo('b', 'completed')],
+    })
+    const { rerender } = renderChip(snap({ running: true }), done)
+    expect(screen.getByRole('button', { name: /已完成2/ })).toBeDefined()
+
+    // The task finishes: the running → idle edge freezes the done time.
+    rerender(<CapsuleChip {...chipProps(snap({}), done)} />)
+    expect(screen.getByRole('button', { name: /任务完成 2\/2/ })).toBeDefined()
+
+    // The default linger window is 8s; past it the capsule disappears.
+    act(() => { vi.advanceTimersByTime(9_000) })
     expect(screen.queryByRole('button')).toBeNull()
   })
 })

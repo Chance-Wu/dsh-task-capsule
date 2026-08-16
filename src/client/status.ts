@@ -38,6 +38,11 @@ export function isWaiting(snap: ConversationSnapshot): boolean {
   return snap.pending.some(wait => wait.kind === 'approval' || wait.kind === 'question')
 }
 
+/** Finished statuses: the chip shows the status word + frozen duration. */
+export function isTerminal(status: CapsuleStatus): boolean {
+  return status === 'success' || status === 'failed' || status === 'paused'
+}
+
 /** Why the snapshot is waiting, when it is: the first pending interaction. */
 export type WaitingReason =
   | { kind: 'approval'; tool: string; reason?: string }

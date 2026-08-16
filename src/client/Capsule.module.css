@@ -26,13 +26,39 @@
   line-height: 18px;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
 }
 
 .chip:hover,
 .chip:focus-visible {
   border-color: var(--dsw-alias-border-l1);
   background: var(--dsw-specific-tip);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+/* Press feedback: the pill yields under the cursor. */
+.chip:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* The open chip reads as the active control for the floating panel. */
+.chip[aria-expanded='true'] {
+  border-color: color-mix(in srgb, var(--dsh-capsule-accent, var(--dsw-alias-state-business-primary)) 45%, transparent);
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Settled terminal chips carry a quiet semantic tint (success / error). */
+.chip[data-status='success'] {
+  border-color: color-mix(in srgb, var(--dsw-alias-state-success-primary) 40%, transparent);
+}
+
+.chip[data-status='failed'] {
+  border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 40%, transparent);
 }
 
 /* The front text (status word / task counts) truncates when the header is
@@ -126,10 +152,17 @@
   color: var(--dsw-alias-label-caption);
 }
 
-/* The working dot breathes — a gentle opacity pulse, not a loader. */
-.glyphRunning .glyphDot,
+/* The working dot breathes — a gentle opacity pulse, not a loader — and
+   carries a soft halo so the "working" state is felt at a glance. Running
+   is a livelier pulse; waiting is a slower, more patient one. */
+.glyphRunning .glyphDot {
+  animation: dsh-capsule-breathe 1.4s ease-in-out infinite;
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 16%, transparent);
+}
+
 .glyphWaiting .glyphDot {
-  animation: dsh-capsule-breathe 1.8s ease-in-out infinite;
+  animation: dsh-capsule-breathe 2.6s ease-in-out infinite;
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 12%, transparent);
 }
 
 @keyframes dsh-capsule-breathe {
@@ -255,6 +288,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
 }
 
 .panelTitle {
@@ -304,6 +339,12 @@
   color: var(--dsw-alias-label-primary);
 }
 
+/* While running, the status word picks up the accent — "working" reads at
+   a glance even without reading the text. */
+.statusLine[data-status='running'] .statusText {
+  color: var(--dsh-capsule-accent, var(--dsw-alias-state-business-primary));
+}
+
 .statusReason {
   flex: 1;
   min-width: 0;
@@ -315,12 +356,22 @@
   text-overflow: ellipsis;
 }
 
-/* current task: the one emphasized row (phase 2 §2) */
+/* current task: the one emphasized row (phase 2 §2) — a short accent bar
+   anchors the eye on "what is happening now"; when the plan is fully done
+   the bar settles to success green. */
 .currentTask {
   display: flex;
   align-items: baseline;
   gap: 8px;
   min-width: 0;
+  padding-left: 8px;
+  border-left: 2px solid var(--dsh-capsule-accent, var(--dsw-alias-state-business-primary));
+  border-radius: 2px;
+  transition: border-color 200ms ease;
+}
+
+.currentTask[data-done='true'] {
+  border-left-color: var(--dsw-alias-state-success-primary);
 }
 
 .currentTaskName {
@@ -363,6 +414,15 @@
   border-radius: 8px;
   font-size: 12px;
   line-height: 18px;
+  transition: background 120ms ease;
+}
+
+.treeItem:hover {
+  background: var(--dsw-alias-fill-l1);
+}
+
+.treeItem[data-status='in_progress']:hover {
+  background: var(--dsw-alias-fill-l2);
 }
 
 .treeItem[data-status='completed'] {
@@ -396,7 +456,7 @@
 }
 
 .itemGlyphActive .glyphDot {
-  animation: dsh-capsule-breathe 1.8s ease-in-out infinite;
+  animation: dsh-capsule-breathe 1.4s ease-in-out infinite;
 }
 
 .itemGlyphPending {
@@ -452,9 +512,9 @@
   flex-direction: column;
   gap: 4px;
   padding: 8px 10px;
-  border: 1px solid var(--dsw-alias-border-l1);
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 30%, transparent);
   border-radius: 8px;
-  background: var(--dsw-specific-tip);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 7%, transparent);
 }
 
 .errorLine {
@@ -467,7 +527,6 @@
 }
 
 .errorToggle {
-  align-self: flex-start;
   padding: 0;
   border: 0;
   background: transparent;
@@ -480,6 +539,42 @@
 .errorToggle:hover,
 .errorToggle:focus-visible {
   color: var(--dsw-alias-label-secondary);
+}
+
+.errorToggle:focus-visible {
+  border-radius: 4px;
+  background: var(--dsw-alias-fill-l1);
+}
+
+/* Retry + view-details sit on one row inside the failure block. */
+.errorActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.errorRetry {
+  flex: none;
+  padding: 1px 10px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 55%, transparent);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 10px;
+  line-height: 16px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.errorRetry:hover:not(:disabled),
+.errorRetry:focus-visible {
+  border-color: var(--dsw-alias-state-error-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 10%, transparent);
+}
+
+.errorRetry:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .errorDetail {
@@ -563,6 +658,29 @@
   border-radius: 6px;
   font-size: 11px;
   line-height: 16px;
+  transition: background 120ms ease;
+}
+
+.recentItem:hover {
+  background: var(--dsw-alias-fill-l1);
+}
+
+/* A leading status dot makes the list scannable: success green, failures
+   error red. */
+.recentItem::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dsw-alias-state-success-primary);
+  opacity: 0.85;
+}
+
+.recentItem[data-status='failed']::before,
+.recentItem[data-status='aborted']::before,
+.recentItem[data-status='interrupted']::before {
+  background: var(--dsw-alias-state-error-primary);
 }
 
 .recentItem[data-status='failed'],
@@ -603,14 +721,43 @@
   gap: 2px;
 }
 
+/* Grouped settings: a caption separates related controls. */
+.settingsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0 2px;
+}
+
+.settingsGroup + .settingsGroup {
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  margin-top: 6px;
+  padding-top: 12px;
+}
+
+.settingsGroupTitle {
+  margin: 0 0 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dsw-alias-label-caption);
+}
+
 .settingsRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 6px 0;
+  border-radius: 6px;
   font-size: 12px;
   line-height: 18px;
+  transition: background 120ms ease;
+}
+
+.settingsRow:hover {
+  background: var(--dsw-alias-fill-l1);
 }
 
 .settingsLabel {
@@ -618,9 +765,46 @@
   color: var(--dsw-alias-label-primary);
 }
 
+/* A small CSS-only switch (the native checkbox stays accessible). */
 .settingsToggle {
+  position: relative;
   flex: none;
-  accent-color: var(--dsw-alias-state-business-primary);
+  box-sizing: border-box;
+  width: 34px;
+  height: 18px;
+  margin: 0;
+  appearance: none;
+  border: 0;
+  border-radius: 9px;
+  background: var(--dsw-alias-fill-l2);
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.settingsToggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  transition: transform 150ms ease;
+}
+
+.settingsToggle:checked {
+  background: var(--dsh-capsule-accent, var(--dsw-alias-state-business-primary));
+}
+
+.settingsToggle:checked::after {
+  transform: translateX(16px);
+}
+
+.settingsToggle:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
 }
 
 .settingsNumber {
@@ -645,6 +829,12 @@
   background: var(--dsw-specific-menu);
   color: var(--dsw-alias-label-primary);
   font-size: 12px;
+}
+
+.settingsSelect:focus-visible,
+.settingsNumber:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 1px;
 }
 
 /* ---- goal objective line (framework goal projection) ---- */
@@ -680,7 +870,7 @@
 
 .progress {
   box-sizing: border-box;
-  height: 3px;
+  height: 4px;
   overflow: hidden;
   border-radius: 2px;
   background: var(--dsw-alias-fill-l1);
@@ -689,8 +879,17 @@
 .progressFill {
   height: 100%;
   border-radius: 2px;
-  background: var(--dsh-capsule-accent, var(--dsw-alias-state-business-primary));
-  transition: width 200ms ease;
+  background: linear-gradient(90deg,
+    var(--dsh-capsule-accent, var(--dsw-alias-state-business-primary)),
+    color-mix(in srgb, var(--dsh-capsule-accent, var(--dsw-alias-state-business-primary)) 55%, transparent));
+  transition: width 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* A fully done plan settles the bar to success green. */
+.progress[data-complete='true'] .progressFill {
+  background: linear-gradient(90deg,
+    var(--dsw-alias-state-success-primary),
+    color-mix(in srgb, var(--dsw-alias-state-success-primary) 55%, transparent));
 }
 
 /* ---- compact density ---- */
@@ -812,22 +1011,75 @@
   border: 0;
 }
 
-/* ---- P0-1: subagent aggregate line ---- */
+/* ---- P0-1: subagent aggregate line + per-child breakdown ---- */
 
 .subagents {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   min-width: 0;
-  overflow: hidden;
-  font-size: 11px;
-  line-height: 16px;
-  color: var(--dsw-alias-label-tertiary);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-variant-numeric: tabular-nums;
 }
 
-.subagents::before {
-  content: '◈ ';
-  color: var(--dsw-alias-state-business-primary);
+.subagentToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+}
+
+.subagentToggle:hover,
+.subagentToggle:focus-visible {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.subagentList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0 0 0 14px;
+  list-style: none;
+}
+
+.subagentItem {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 16px;
+  transition: background 120ms ease;
+}
+
+.subagentItem:hover {
+  background: var(--dsw-alias-fill-l1);
+}
+
+.subagentName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dsw-alias-label-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.subagentCounts {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- P1-8: completed group toggle ---- */
@@ -867,6 +1119,21 @@
   text-align: left;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* ---- disclosure arrows (completed group + subagent breakdown): the glyph
+   itself stays put and rotates 90° to point down when open ---- */
+
+.treeArrow {
+  flex: none;
+  display: inline-block;
+  width: 12px;
+  text-align: center;
+  transition: transform 160ms ease;
+}
+
+.treeArrowOpen {
+  transform: rotate(90deg);
 }
 
 /* ---- P1-9: per-item duration bar ---- */
@@ -911,6 +1178,23 @@
   }
   .treeBarFill {
     transition: none;
+  }
+  .chip,
+  .chip:hover,
+  .chip:active,
+  .treeItem,
+  .recentItem,
+  .subagentItem,
+  .errorRetry,
+  .progressFill,
+  .settingsRow,
+  .settingsToggle,
+  .settingsToggle::after,
+  .treeArrow,
+  .currentTask {
+    transition: none;
+    transform: none;
+    box-shadow: none;
   }
 }
 

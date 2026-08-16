@@ -7,7 +7,7 @@
  * @module dsh-task-capsule/client/SettingsSection
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { CapsuleSettings } from '../types/capsule.ts'
 import { apiOf } from './api.ts'
@@ -40,6 +40,16 @@ function Toggle({ label, checked, onChange }: {
   )
 }
 
+/** A group of related settings: a small caption + its rows. */
+function Group({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className={css.settingsGroup}>
+      <h4 className={css.settingsGroupTitle}>{title}</h4>
+      {children}
+    </section>
+  )
+}
+
 export function SettingsSection({ t }: SettingsSectionProps) {
   const [settings, setSettings] = useState<CapsuleSettings | null>(null)
 
@@ -61,61 +71,72 @@ export function SettingsSection({ t }: SettingsSectionProps) {
 
   return (
     <div className={css.settingsSection}>
-      <Toggle label={t('settings.showDuration')} checked={settings.showDuration} onChange={showDuration => set({ showDuration })} />
-      <Toggle label={t('settings.showCurrentOp')} checked={settings.showCurrentOp} onChange={showCurrentOp => set({ showCurrentOp })} />
-      <Toggle label={t('settings.showProgress')} checked={settings.showProgress} onChange={showProgress => set({ showProgress })} />
-      <Toggle label={t('settings.autoExpandFailed')} checked={settings.autoExpandFailed} onChange={autoExpandFailed => set({ autoExpandFailed })} />
-      <Toggle label={t('settings.autoExpandRunning')} checked={settings.autoExpandRunning} onChange={autoExpandRunning => set({ autoExpandRunning })} />
-      <Toggle label={t('settings.alwaysVisible')} checked={settings.alwaysVisible} onChange={alwaysVisible => set({ alwaysVisible })} />
-      <Toggle label={t('settings.traceFrames')} checked={settings.traceFrames} onChange={traceFrames => set({ traceFrames })} />
-      <label className={css.settingsRow}>
-        <span className={css.settingsLabel}>{t('settings.density')}</span>
-        <select
-          className={css.settingsSelect}
-          value={settings.density}
-          onChange={event => set({ density: event.target.value as CapsuleSettings['density'] })}
-        >
-          <option value="comfortable">{t('settings.densityComfortable')}</option>
-          <option value="compact">{t('settings.densityCompact')}</option>
-        </select>
-      </label>
-      <label className={css.settingsRow}>
-        <span className={css.settingsLabel}>{t('settings.accent')}</span>
-        <select
-          className={css.settingsSelect}
-          value={settings.accent}
-          onChange={event => set({ accent: event.target.value as CapsuleSettings['accent'] })}
-        >
-          <option value="auto">{t('settings.accentAuto')}</option>
-          <option value="business">{t('settings.accentBusiness')}</option>
-          <option value="success">{t('settings.accentSuccess')}</option>
-          <option value="warn">{t('settings.accentWarn')}</option>
-          <option value="error">{t('settings.accentError')}</option>
-        </select>
-      </label>
-      <label className={css.settingsRow}>
-        <span className={css.settingsLabel}>{t('settings.keepAfterDoneMs')}</span>
-        <input
-          type="number"
-          className={css.settingsNumber}
-          min={0}
-          step={1000}
-          value={settings.keepAfterDoneMs}
-          onChange={event => set({ keepAfterDoneMs: Number(event.target.value) })}
-        />
-      </label>
-      <label className={css.settingsRow}>
-        <span className={css.settingsLabel}>{t('settings.historyLimit')}</span>
-        <select
-          className={css.settingsSelect}
-          value={settings.historyLimit}
-          onChange={event => set({ historyLimit: Number(event.target.value) as 3 | 5 | 10 })}
-        >
-          <option value={3}>3</option>
-          <option value={5}>5</option>
-          <option value={10}>10</option>
-        </select>
-      </label>
+      <Group title={t('settings.groupDisplay')}>
+        <Toggle label={t('settings.showDuration')} checked={settings.showDuration} onChange={showDuration => set({ showDuration })} />
+        <Toggle label={t('settings.showCurrentOp')} checked={settings.showCurrentOp} onChange={showCurrentOp => set({ showCurrentOp })} />
+        <Toggle label={t('settings.showProgress')} checked={settings.showProgress} onChange={showProgress => set({ showProgress })} />
+      </Group>
+
+      <Group title={t('settings.groupBehavior')}>
+        <Toggle label={t('settings.autoExpandRunning')} checked={settings.autoExpandRunning} onChange={autoExpandRunning => set({ autoExpandRunning })} />
+        <Toggle label={t('settings.autoExpandFailed')} checked={settings.autoExpandFailed} onChange={autoExpandFailed => set({ autoExpandFailed })} />
+        <Toggle label={t('settings.alwaysVisible')} checked={settings.alwaysVisible} onChange={alwaysVisible => set({ alwaysVisible })} />
+        <label className={css.settingsRow}>
+          <span className={css.settingsLabel}>{t('settings.keepAfterDoneMs')}</span>
+          <input
+            type="number"
+            className={css.settingsNumber}
+            min={0}
+            step={1000}
+            value={settings.keepAfterDoneMs}
+            onChange={event => set({ keepAfterDoneMs: Number(event.target.value) })}
+          />
+        </label>
+        <label className={css.settingsRow}>
+          <span className={css.settingsLabel}>{t('settings.historyLimit')}</span>
+          <select
+            className={css.settingsSelect}
+            value={settings.historyLimit}
+            onChange={event => set({ historyLimit: Number(event.target.value) as 3 | 5 | 10 })}
+          >
+            <option value={3}>3</option>
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+          </select>
+        </label>
+      </Group>
+
+      <Group title={t('settings.groupAppearance')}>
+        <label className={css.settingsRow}>
+          <span className={css.settingsLabel}>{t('settings.density')}</span>
+          <select
+            className={css.settingsSelect}
+            value={settings.density}
+            onChange={event => set({ density: event.target.value as CapsuleSettings['density'] })}
+          >
+            <option value="comfortable">{t('settings.densityComfortable')}</option>
+            <option value="compact">{t('settings.densityCompact')}</option>
+          </select>
+        </label>
+        <label className={css.settingsRow}>
+          <span className={css.settingsLabel}>{t('settings.accent')}</span>
+          <select
+            className={css.settingsSelect}
+            value={settings.accent}
+            onChange={event => set({ accent: event.target.value as CapsuleSettings['accent'] })}
+          >
+            <option value="auto">{t('settings.accentAuto')}</option>
+            <option value="business">{t('settings.accentBusiness')}</option>
+            <option value="success">{t('settings.accentSuccess')}</option>
+            <option value="warn">{t('settings.accentWarn')}</option>
+            <option value="error">{t('settings.accentError')}</option>
+          </select>
+        </label>
+      </Group>
+
+      <Group title={t('settings.groupDebug')}>
+        <Toggle label={t('settings.traceFrames')} checked={settings.traceFrames} onChange={traceFrames => set({ traceFrames })} />
+      </Group>
     </div>
   )
 }

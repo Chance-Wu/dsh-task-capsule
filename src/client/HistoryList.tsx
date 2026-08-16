@@ -49,7 +49,7 @@ export function HistoryList({ t }: HistoryListProps) {
   const retry = (entry: HistoryEntry): void => {
     openSession(entry.sessionId)
     setRetrying(entry.sessionId)
-    promptSession(entry.sessionId, '继续').finally(() => setRetrying(null))
+    promptSession(entry.sessionId, t('panel.retryPrompt')).finally(() => setRetrying(null))
   }
 
   return (

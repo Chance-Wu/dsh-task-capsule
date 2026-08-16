@@ -56,6 +56,20 @@ function entryId(entry: { sessionId: string; startedAt: number }): string {
 }
 
 /**
+ * Whether an idle agent transition closes the open task (extracted pure so
+ * the decision is unit-testable). An idle with queued work is a TURN GAP —
+ * the plan continues on the next wake, so the task stays open; a blocked
+ * turn is waiting on the user and resumes when they answer. Only an idle
+ * with no pending work and no user wait finalizes the task into history.
+ */
+export function shouldFinalizeTask(fold: CapsuleFoldState | undefined, hasPending: boolean): boolean {
+  if (fold === undefined) return false
+  if (hasPending) return false
+  if (fold.capsule.lastTurnEndReason === 'blocked') return false
+  return true
+}
+
+/**
  * P0-2: the retry link for a freshly finished entry — the latest archived
  * non-success entry of the SAME session, when there is one (best-effort:
  * the ring may already have evicted the original failure).
@@ -216,13 +230,33 @@ export class TaskHistoryService extends Service {
       const subagent = (agent.session.header.delegationDepth ?? 0) > 0
       if (status === 'running' && !subagent) {
         this.open.add(sessionId)
-      } else if (status === 'idle' && this.open.delete(sessionId)) {
+      } else if (status === 'idle' && this.open.has(sessionId)) {
+        // A turn gap (more queued work) or a blocked turn (waiting on the
+        // user) is NOT a task end — keep the task open so the ring records
+        // one entry per task, not one per turn.
         const fold = this.folds.current(sessionId)
+        if (!shouldFinalizeTask(fold, agent.inbox.hasPending)) return
+        this.open.delete(sessionId)
         if (fold !== undefined) {
           const entry = finalize(sessionId, fold, Date.now(), { frames: this.frames.get(sessionId) })
           this.push(entry)
+          // Frames are per-task telemetry; the archived value is captured.
+          this.frames.delete(sessionId)
         }
       }
+    })
+    // A disposed session must release its fold, frame count, open-task slot
+    // and any subagent-parent registration — otherwise long-running hosts
+    // accumulate one stale entry per departed session.
+    this.ctx.on('session/disposed', session => {
+      const sessionId = session.id
+      this.folds.drop(sessionId)
+      this.frames.delete(sessionId)
+      this.open.delete(sessionId)
+      for (const [parent, children] of this.childrenByParent) {
+        if (children.delete(sessionId) && children.size === 0) this.childrenByParent.delete(parent)
+      }
+      this.childrenByParent.delete(sessionId)
     })
     // Restore the persisted ring (best-effort; the default stands on error).
     void this.load()
@@ -231,7 +265,12 @@ export class TaskHistoryService extends Service {
   /** Finished tasks, newest first, capped by the current settings limit. */
   list(): HistoryEntry[] {
     const cap = this.settings.get().historyLimit
-    if (this.entries.length > cap) this.entries.length = cap
+    if (this.entries.length > cap) {
+      this.entries.length = cap
+      // The limit shrank since the last write — bring the persisted file in
+      // line too (lazy: only when a read actually trims).
+      void this.persist()
+    }
     return this.entries
   }
 

@@ -63,11 +63,14 @@ export function sanitizeSettings(input: unknown): Partial<CapsuleSettings> {
 
 export class SettingsService extends Service {
   private current: CapsuleSettings
+  /** The persisted-file load; `update` awaits it so a startup edit never
+   *  overwrites a previously saved setting with defaults (load race). */
+  private readonly loading: Promise<void>
 
   constructor(ctx: Context, defaults: CapsuleSettings) {
     super(ctx, 'taskCapsuleSettings')
     this.current = { ...defaults }
-    void this.load()
+    this.loading = this.load()
   }
 
   /** The current settings (defaults until the persisted file loads). */
@@ -77,6 +80,10 @@ export class SettingsService extends Service {
 
   /** Merge a validated partial, persist, and return the new settings. */
   async update(patch: Partial<CapsuleSettings>): Promise<CapsuleSettings> {
+    // Wait for the persisted file to merge first — otherwise a settings-panel
+    // edit issued right after startup would persist defaults + patch and drop
+    // every previously saved field.
+    await this.loading
     this.current = { ...this.current, ...sanitizeSettings(patch) }
     try {
       await writeFile(dshHomePath(SETTINGS_FILE), `${JSON.stringify(this.current, null, 2)}\n`, 'utf8')

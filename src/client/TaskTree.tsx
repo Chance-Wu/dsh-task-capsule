@@ -73,6 +73,21 @@ function itemElapsedMs(item: TaskItem, now: number): number {
   return 0
 }
 
+/**
+ * The live-operation line: `▸ tool command-or-file`. Shared by the task tree
+ * (under the active item) and the plan-less panel (under the current-task
+ * row), so `showCurrentOp` works without a todo plan too.
+ */
+export function CurrentOpLine({ op }: { op: RunningToolCall }) {
+  return (
+    <span className={css.currentOp}>
+      <span className={css.currentOpLabel} aria-hidden>▸</span>
+      <span className={css.currentOpTool} aria-hidden>{op.name}</span>
+      <span className={css.currentOpText} title={describeCall(op)}>{clipLong(describeCall(op), 64)}</span>
+    </span>
+  )
+}
+
 /** Props for the task tree: the plan plus the live snapshot's running calls. */
 export interface TaskTreeProps {
   items: readonly TaskItem[]
@@ -134,13 +149,7 @@ export function TaskTree({ items, now, runningCalls, showDuration, showCurrentOp
             </span>
           )
           : null}
-        {item === active && op !== undefined ? (
-          <span className={css.currentOp}>
-            <span className={css.currentOpLabel} aria-hidden>▸</span>
-            <span className={css.currentOpTool} aria-hidden>{op.name}</span>
-            <span className={css.currentOpText} title={describeCall(op)}>{clipLong(describeCall(op), 64)}</span>
-          </span>
-        ) : null}
+        {item === active && op !== undefined ? <CurrentOpLine op={op} /> : null}
       </li>
     )
   }
@@ -156,7 +165,7 @@ export function TaskTree({ items, now, runningCalls, showDuration, showCurrentOp
             aria-expanded={completedOpen}
             onClick={() => setCompletedOpen(current => !current)}
           >
-            <span aria-hidden>{completedOpen ? '▾' : '▸'}</span>
+            <span className={`${css.treeArrow}${completedOpen ? ` ${css.treeArrowOpen}` : ''}`} aria-hidden>▸</span>
             <span className={css.treeGroupLabel}>{t('tree.completed', { count: completed.length })}</span>
           </button>
           {completedOpen ? completed.map(renderItem) : null}

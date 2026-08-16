@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { applyFold, initialFold } from '../harness/adapter.ts'
-import { aggregateChildren, finalize, retryLinkFor, sanitizeHistory } from './task-history.ts'
+import { aggregateChildren, finalize, retryLinkFor, sanitizeHistory, shouldFinalizeTask } from './task-history.ts'
 import { sanitizeSettings } from './task-state.ts'
 import type { CapsuleState } from '../types/capsule.ts'
 
@@ -170,6 +170,33 @@ describe('retryLinkFor (P0-2)', () => {
   it('returns nothing when no prior failure exists', () => {
     expect(retryLinkFor([entry('s1', 100, 'success')], { sessionId: 's1' })).toBeUndefined()
     expect(retryLinkFor([entry('s2', 100, 'failed')], { sessionId: 's1' })).toBeUndefined()
+  })
+})
+
+describe('shouldFinalizeTask (turn-gap guard)', () => {
+  const folded = (endKind: string | undefined) => {
+    let fold = applyFold(initialFold(), directPrompt(100))
+    fold = applyFold(fold, todoWrite(110, [{ content: 'a', status: 'in_progress' }]))
+    if (endKind !== undefined) fold = applyFold(fold, turnEnd(130, endKind))
+    return fold
+  }
+
+  it('finalizes an idle task with no pending work', () => {
+    expect(shouldFinalizeTask(folded('completed'), false)).toBe(true)
+  })
+
+  it('keeps the task open when more work is queued (a turn gap)', () => {
+    expect(shouldFinalizeTask(folded('completed'), true)).toBe(false)
+    // Even a failed turn continues when a follow-up is queued.
+    expect(shouldFinalizeTask(folded('error'), true)).toBe(false)
+  })
+
+  it('keeps the task open while a blocked turn waits on the user', () => {
+    expect(shouldFinalizeTask(folded('blocked'), false)).toBe(false)
+  })
+
+  it('never finalizes an absent fold', () => {
+    expect(shouldFinalizeTask(undefined, false)).toBe(false)
   })
 })
 

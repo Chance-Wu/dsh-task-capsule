@@ -18,10 +18,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ConversationSnapshot, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import type { CapsuleAccent, CapsuleSettings, CapsuleState, CapsuleStatus } from '../types/capsule.ts'
+import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { CapsuleAccent, CapsuleSettings } from '../types/capsule.ts'
 import { apiOf } from './api.ts'
-import { deriveStatus, isWaiting } from './status.ts'
+import { deriveStatus, isTerminal, isWaiting } from './status.ts'
 import { clipLong, formatDuration, progressLabel, todoCounts } from './format.ts'
 import { NS, STATUS_KEYS } from './locales.ts'
 import { StatusGlyph } from './StatusGlyph.tsx'
@@ -51,11 +51,6 @@ const CLOSE_ANIM_MS = 240
 
 /** Max characters of the task name shown in the compact chip (both ends kept). */
 const CHIP_NAME_MAX = 20
-
-/** Finished statuses: the chip shows the status word + frozen duration. */
-function isTerminal(status: CapsuleStatus): boolean {
-  return status === 'success' || status === 'failed' || status === 'paused'
-}
 
 export function CapsuleChip({ sessionId, useSession, useProjection, useSessions, t }: CapsuleChipProps) {
   const snap = useSession(state => state)
@@ -126,8 +121,14 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
     capsule.todos.length > 0 || capsule.startedAt !== undefined || capsule.files.paths.length > 0
   )
   const showingDone = doneAt !== null
-  // `alwaysVisible` pins the capsule even for an idle session with no activity.
-  const visible = settings?.alwaysVisible === true || snap.running || isWaiting(snap) || hasActivity || showingDone
+  // `keepAfterDoneMs` (0 = immediately) bounds how long the settled capsule
+  // lingers after the task finishes; an open panel, a fresh activity edge,
+  // or `alwaysVisible` keeps it pinned past that window.
+  const lingerMs = Math.max(0, settings?.keepAfterDoneMs ?? DEFAULT_KEEP_MS)
+  const doneExpired = showingDone && doneAt !== null && now - doneAt >= lingerMs
+  const visible = settings?.alwaysVisible === true || snap.running || isWaiting(snap)
+    || open || closing
+    || (!doneExpired && (hasActivity || showingDone))
 
   // Debug aid: count projection updates while traceFrames is on, so the
   // frame-churn guard's effect is observable in the console.
@@ -348,15 +349,6 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
   const doneSummary = hasPlan ? progressLabel(counts.done, todos.length) : ''
   // P0-4: a plan-less run still shows its progress — the completed turn count.
   const turnSummary = (capsule?.turnCount ?? 0) > 0 ? t('chip.turns', { count: capsule?.turnCount }) : ''
-  const labelText = terminal
-    ? hasPlan
-      ? `${t(STATUS_KEYS[status])} ${doneSummary}`
-      : turnSummary !== ''
-        ? `${t(STATUS_KEYS[status])} ${turnSummary}`
-        : t(STATUS_KEYS[status])
-    : hasPlan
-      ? countsText
-      : clipLong(t('chip.sessionTask'), CHIP_NAME_MAX)
   const fullLabel = terminal
     ? hasPlan
       ? `${t(STATUS_KEYS[status])} ${doneSummary}`
@@ -366,6 +358,9 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
     : hasPlan
       ? countsText
       : t('chip.sessionTask')
+  // Only the plan-less label is clipped: a terminal status word and the
+  // per-status counts must never be truncated.
+  const labelText = !terminal && !hasPlan ? clipLong(fullLabel, CHIP_NAME_MAX) : fullLabel
   const chipFullText = `${fullLabel} ${durationText}`
 
   const chipClass = terminal ? `${css.chip} ${css.chipDone}` : css.chip
@@ -375,6 +370,16 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
   const rootStyle: CSSProperties | undefined = accentVar !== undefined
     ? { ['--dsh-capsule-accent' as string]: accentVar }
     : undefined
+  // The panel is portaled to <body> — outside the chip root — so the accent
+  // variable must ride the portal shell itself for the panel to inherit it.
+  const popoverStyle: CSSProperties | undefined = pos !== null
+    ? {
+      top: pos.top,
+      right: pos.right,
+      maxHeight: pos.maxHeight,
+      ...(accentVar !== undefined ? { ['--dsh-capsule-accent' as string]: accentVar } : {}),
+    }
+    : undefined
 
   return (
     <div ref={rootRef} className={css.root} style={rootStyle}>
@@ -382,6 +387,7 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
         ref={triggerRef}
         type="button"
         className={chipClass}
+        data-status={status}
         aria-expanded={open}
         aria-label={chipFullText}
         title={chipFullText}
@@ -409,7 +415,7 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
               role="dialog"
               aria-label={t('panel.title')}
               className={open ? css.popover : css.popoverClosing}
-              style={{ top: pos.top, right: pos.right, maxHeight: pos.maxHeight }}
+              style={popoverStyle}
               data-flip={flipRef.current ? 'true' : 'false'}
               tabIndex={-1}
               onKeyDown={onPanelKeyDown}
@@ -422,7 +428,6 @@ export function CapsuleChip({ sessionId, useSession, useProjection, useSessions,
                   now={now}
                   settings={settings}
                   goal={goal}
-                  accent={accent}
                   titleOf={titleOf}
                   onClose={closePanel}
                   t={t}
